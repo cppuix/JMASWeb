@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دروس جامع مسائل العقيدة الصحيحة</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>دروس جامع مسائل العقيدة الصحيحة</h1>
+            <p>للشيخ أبي عبد الرحمن فيصل بن مسفر الوادعي حفظه الله</p>
+        </header>
+
+        <main>
+            <div class="player-section">
+                <div class="audio-player">
+                    <audio id="audioPlayer" preload="metadata"></audio>
+                    <div class="player-controls">
+                        <button id="prevBtn" class="control-btn">⏮️</button>
+                        <button id="playPauseBtn" class="control-btn">▶️</button>
+                        <button id="nextBtn" class="control-btn">⏭️</button>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress"></div>
+                        </div>
+                        <div class="time-display">
+                            <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+                        </div>
+                    </div>
+                    <div class="speed-controls">
+                        <label for="speedSelect">السرعة:</label>
+                        <select id="speedSelect">
+                            <option value="0.5">0.5x</option>
+                            <option value="0.75">0.75x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="1.75">1.75x</option>
+                            <option value="2">2x</option>
+                        </select>
+                    </div>
+                    <div class="skip-controls">
+                        <button id="skipBackBtn" class="skip-btn">⏪ -5s</button>
+                        <button id="skipForwardBtn" class="skip-btn">⏩ +5s</button>
+                    </div>
+                    <div class="auto-play">
+                        <label for="autoPlayNext">
+                            <input type="checkbox" id="autoPlayNext" checked>
+                            التشغيل التلقائي للدرس التالي
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-section">
+                <div class="lesson-info">
+                    <h2 id="lessonTitle">الدرس 1</h2>
+                    <div class="lesson-description">
+                        <h3>وصف الدرس</h3>
+                        <ul id="descriptionList">
+                            <li>جاري تحميل الوصف...</li>
+                        </ul>
+                    </div>
+                    <div class="lesson-transcription">
+                        <h3>النص</h3>
+                        <div id="transcriptionContent">
+                            جاري تحميل النص...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lessons-list">
+                <h3>قائمة الدروس</h3>
+                <div id="lessonsContainer">
+                    <!-- Lessons will be populated here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
