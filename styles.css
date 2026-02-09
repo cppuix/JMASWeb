@@ -134,7 +134,7 @@ html
 /* 5% ROW: META */
 .meta-row
 {
-    height: 40px;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -147,8 +147,8 @@ html
 /* 30% ROW: PLAYER */
 .player-section
 {
-    height: 30%;
-    padding: 20px;
+    
+    padding: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -160,14 +160,6 @@ html
 {
     width: 100%;
     max-width: 600px;
-}
-
-#lessonTitle
-{
-    font-size: 1.1rem;
-    text-align: center;
-    margin-bottom: 15px;
-    color: var(--primary);
 }
 
 .progress-bar
@@ -228,8 +220,8 @@ html
     background: #f4f4f4; /* Light grey base */
     border: 1px solid #e0e0e0;
     border-radius: 50%; /* Perfect circles */
-    width: 38px;
-    height: 38px;
+    width: 2rem;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -268,7 +260,7 @@ html
     align-items: center;    /* This aligns them perfectly on the horizontal line */
     justify-content: flex-start;
     gap: 15px;              /* Spacing between the select and the checkbox */
-    margin-top: 10px;
+    /*margin-top: 10px;*/
 }
 .auto-play {
     display: flex;
@@ -291,7 +283,7 @@ html
 /* 60% ROW: CONTENT */
 .content-section
 {
-    height: 60%;
+    flex: 1;
     display: flex;
     flex-direction: column;
 }
@@ -363,10 +355,7 @@ html
         transform: translateX(0);
     }
 
-    .player-section
-    {
-        height: 35%;
-    }
+    
 
     .content-section
     {
