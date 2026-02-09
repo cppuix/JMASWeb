@@ -125,7 +125,7 @@ class LessonPlayer
                     <h4>${lesson.title}</h4>
                     <p class="progress-info">${progressInfo}</p>
                 </div>
-                <button class="close-modal" title="تحميل">⬇</button>
+                <button class="download-btn" title="تحميل">⬇</button>
             `;
 
             lessonElement.querySelector('.download-btn').addEventListener('click', (e) =>
