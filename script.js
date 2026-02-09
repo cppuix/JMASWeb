@@ -1,5 +1,9 @@
+// Add these constants to the top of your script.js
+const ICON_PLAY = "M8 5v14l11-7z"; 
+const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z"; // Perfectly symmetrical pause bars
 class LessonPlayer
 {
+    
     constructor()
     {
         // Core Elements
@@ -19,7 +23,6 @@ class LessonPlayer
         this.durationSpan = document.getElementById('duration');
 
         // Content UI
-        this.lessonTitle = document.getElementById('lessonTitle');
         this.descriptionList = document.getElementById('descriptionList');
         this.transcriptionContent = document.getElementById('transcriptionContent');
         this.lessonsContainer = document.getElementById('lessonsContainer');
@@ -161,10 +164,10 @@ class LessonPlayer
             this.audioPlayer.src = lesson.url;
         }
 
+        this.audioPlayer.preload = "auto";
         this.audioPlayer.load();
 
         // Update UI Text
-        this.lessonTitle.textContent = lesson.title;
         if (this.currentNum) this.currentNum.textContent = index + 1;
 
         // Update Description (Handles arrays or strings)
@@ -187,13 +190,14 @@ class LessonPlayer
         localStorage.setItem('lastLessonId', lesson.id);
         this.updateLessonsListState();
 
+        const iconPath = this.playPauseBtn.querySelector('path');
         if (shouldPlay)
         {
             this.audioPlayer.play().catch(e => console.log("Playback failed:", e));
-            this.playPauseBtn.textContent = '⏸️';
+            iconPath.setAttribute('d', "M6 5h4v14H6zm8 0h4v14h-4z");
         } else
         {
-            this.playPauseBtn.textContent = '▶️';
+            iconPath.setAttribute('d', "M8 5v14l11-7z");
         }
     }
 
@@ -208,14 +212,16 @@ class LessonPlayer
 
     togglePlayPause()
     {
-        if (this.audioPlayer.paused)
-        {
+        const iconPath = this.playPauseBtn.querySelector('path');
+
+        if (this.audioPlayer.paused) {
             this.audioPlayer.play();
-            this.playPauseBtn.textContent = '⏸️';
-        } else
-        {
+            // Set to PAUSE icon
+            iconPath.setAttribute('d', "M6 5h4v14H6zm8 0h4v14h-4z");
+        } else {
             this.audioPlayer.pause();
-            this.playPauseBtn.textContent = '▶️';
+            // Set to PLAY icon
+            iconPath.setAttribute('d', "M8 5v14l11-7z");
         }
     }
 
@@ -256,12 +262,14 @@ class LessonPlayer
 
     handleAudioEnded()
     {
+        const iconPath = this.playPauseBtn.querySelector('path');
         if (this.autoPlayNext.checked)
         {
             this.playNextLesson();
         } else
         {
-            this.playPauseBtn.textContent = '▶️';
+            this.playPauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>`;
+            iconPath.setAttribute('d', "M8 5v14l11-7z");
         }
     }
 
@@ -310,3 +318,19 @@ document.addEventListener('click', (e) =>
         toggleSidebar();
     }
 });
+
+// ABOUT MODAL
+
+function toggleAbout() {
+    const modal = document.getElementById('aboutModal');
+    const isVisible = modal.style.display === 'flex';
+    modal.style.display = isVisible ? 'none' : 'flex';
+}
+
+// Close modal if clicking outside the content box
+window.onclick = function(event) {
+    const modal = document.getElementById('aboutModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
