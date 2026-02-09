@@ -2,86 +2,94 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دروس جامع مسائل العقيدة الصحيحة</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>جامع مسائل العقيدة الصحيحة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>دروس جامع مسائل العقيدة الصحيحة</h1>
-            <p>للشيخ أبي عبد الرحمن فيصل بن مسفر الوادعي حفظه الله</p>
-        </header>
+    <div class="app-shell">
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <h3>قائمة الدروس</h3>
+                <button onclick="toggleSidebar()" class="close-mobile">✕</button>
+            </div>
+            <div id="lessonsContainer" class="lessons-scroll"></div>
+        </aside>
 
-        <main>
-            <div class="player-section">
-                <div class="audio-player">
-                    <audio id="audioPlayer" preload="metadata"></audio>
-                    <div class="player-controls">
-                        <button id="prevBtn" class="control-btn">⏮️</button>
-                        <button id="playPauseBtn" class="control-btn">▶️</button>
-                        <button id="nextBtn" class="control-btn">⏭️</button>
-                    </div>
-                    <div class="progress-container">
-                        <div class="progress-bar">
-                            <div class="progress"></div>
+        <main class="main-view">
+            <header class="title-row">
+                <button onclick="toggleSidebar()" class="menu-btn">☰</button>
+                <h1>جامع مسائل العقيدة الصحيحة</h1>
+                <div class="spacer"></div> </header>
+
+            <section class="meta-row">
+                <div id="lessonCounter">الدرس <span id="currentNum">1</span> من <span id="totalNum">--</span></div>
+            </section>
+
+            <section class="player-section">
+                <div class="player-container">
+                    <h2 id="lessonTitle">عنوان الدرس يظهر هنا</h2>
+                    
+                    <div class="progress-area">
+                        <div class="progress-bar"><div class="progress"></div></div>
+                        <div class="time-row">
+                            <span id="currentTime">0:00</span>
+                            <span id="duration">0:00</span>
                         </div>
-                        <div class="time-display">
-                            <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
-                        </div>
                     </div>
-                    <div class="speed-controls">
-                        <label for="speedSelect">السرعة:</label>
+
+                    <div class="controls-row">
+                        <button id="prevBtn" class="nav-btn">⏮</button>
+                        <button id="skipBackBtn" class="skip-btn">-5s</button>
+                        <button id="playPauseBtn" class="play-btn">▶</button>
+                        <button id="skipForwardBtn" class="skip-btn">+5s</button>
+                        <button id="nextBtn" class="nav-btn">⏭</button>
+                    </div>
+
+                    <div class="settings-row">
                         <select id="speedSelect">
                             <option value="0.5">0.5x</option>
-                            <option value="0.75">0.75x</option>
                             <option value="1" selected>1x</option>
-                            <option value="1.25">1.25x</option>
                             <option value="1.5">1.5x</option>
-                            <option value="1.75">1.75x</option>
                             <option value="2">2x</option>
                         </select>
-                    </div>
-                    <div class="skip-controls">
-                        <button id="skipBackBtn" class="skip-btn">⏪ -5s</button>
-                        <button id="skipForwardBtn" class="skip-btn">⏩ +5s</button>
-                    </div>
-                    <div class="auto-play">
-                        <label for="autoPlayNext">
-                            <input type="checkbox" id="autoPlayNext" checked>
-                            التشغيل التلقائي للدرس التالي
-                        </label>
+                        <label class="auto-play"><input type="checkbox" id="autoPlayNext" checked> تشغيل تلقائي</label>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="content-section">
-                <div class="lesson-info">
-                    <h2 id="lessonTitle">الدرس 1</h2>
-                    <div class="lesson-description">
-                        <h3>وصف الدرس</h3>
-                        <ul id="descriptionList">
-                            <li>جاري تحميل الوصف...</li>
-                        </ul>
-                    </div>
-                    <div class="lesson-transcription">
-                        <h3>النص</h3>
-                        <div id="transcriptionContent">
-                            جاري تحميل النص...
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <section class="content-section">
+                <nav class="tab-nav">
+                    <button class="tab-btn active" onclick="switchTab(event, 'tab-description')">الوصف</button>
+                    <button class="tab-btn" onclick="switchTab(event, 'tab-transcript')">النص المكتوب</button>
+                </nav>
 
-            <div class="lessons-list">
-                <h3>قائمة الدروس</h3>
-                <div id="lessonsContainer">
-                    <!-- Lessons will be populated here -->
+                <div class="scrollable-content">
+                    <audio id="audioPlayer" preload="metadata"></audio>
+                    
+                    <div id="tab-description" class="tab-pane active">
+                        <ul id="descriptionList"></ul>
+                    </div>
+                    
+                    <div id="tab-transcript" class="tab-pane">
+                        <div id="transcriptionContent"></div>
+                    </div>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 
     <script src="script.js"></script>
+    <script>
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        
+        function switchTab(evt, tabId) {
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+    </script>
 </body>
 </html>

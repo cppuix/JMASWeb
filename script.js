@@ -2,7 +2,7 @@ class LessonPlayer
 {
     constructor()
     {
-        // Elements
+        // Core Elements
         this.audioPlayer = document.getElementById('audioPlayer');
         this.playPauseBtn = document.getElementById('playPauseBtn');
         this.prevBtn = document.getElementById('prevBtn');
@@ -11,15 +11,24 @@ class LessonPlayer
         this.skipBackBtn = document.getElementById('skipBackBtn');
         this.skipForwardBtn = document.getElementById('skipForwardBtn');
         this.autoPlayNext = document.getElementById('autoPlayNext');
+
+        // Progress UI
         this.progressBar = document.querySelector('.progress');
         this.progressContainer = document.querySelector('.progress-bar');
         this.currentTimeSpan = document.getElementById('currentTime');
         this.durationSpan = document.getElementById('duration');
+
+        // Content UI
         this.lessonTitle = document.getElementById('lessonTitle');
         this.descriptionList = document.getElementById('descriptionList');
         this.transcriptionContent = document.getElementById('transcriptionContent');
         this.lessonsContainer = document.getElementById('lessonsContainer');
 
+        // Counter UI (The new 5% row elements)
+        this.currentNum = document.getElementById('currentNum');
+        this.totalNum = document.getElementById('totalNum');
+
+        // State
         this.currentLessonIndex = 0;
         this.lessons = [];
         this.progress = {};
@@ -31,7 +40,11 @@ class LessonPlayer
     {
         this.setupEventListeners();
         this.loadProgress();
-        await this.loadLessons(); // Wait for JSON to load
+        await this.loadLessons();
+
+        // Set total count in the 5% row
+        if (this.totalNum) this.totalNum.textContent = this.lessons.length;
+
         this.createLessonsList();
 
         // Load saved or initial lesson
@@ -42,7 +55,7 @@ class LessonPlayer
             const foundIndex = this.lessons.findIndex(l => l.id == lastLessonId);
             if (foundIndex !== -1) indexToLoad = foundIndex;
         }
-        this.loadLesson(indexToLoad, false); // false = don't auto-play on start
+        this.loadLesson(indexToLoad, false);
     }
 
     setupEventListeners()
@@ -82,7 +95,6 @@ class LessonPlayer
         {
             const response = await fetch('lessons.json');
             const data = await response.json();
-            // Map data and ensure IDs exist
             this.lessons = data.map((lesson, index) => ({
                 ...lesson,
                 id: lesson.id || (index + 1)
@@ -101,21 +113,22 @@ class LessonPlayer
         {
             const lessonElement = document.createElement('div');
             lessonElement.className = 'lesson-item';
-            if (index === this.currentLessonIndex) lessonElement.classList.add('active');
 
             const progressInfo = this.progress[lesson.id] ?
-                `التقدم: ${this.formatTime(this.progress[lesson.id])}` : '';
+                `استأنف من: ${this.formatTime(this.progress[lesson.id])}` : 'لم يبدأ بعد';
 
             lessonElement.innerHTML = `
-                <h4>${lesson.title}</h4>
-                <div class="progress-info">${progressInfo}</div>
-                <button class="download-btn">تحميل الصوتية</button>
+                <div class="lesson-info">
+                    <h4>${lesson.title}</h4>
+                    <p class="progress-info">${progressInfo}</p>
+                </div>
+                <button class="download-btn" title="تحميل">⬇</button>
             `;
 
             lessonElement.querySelector('.download-btn').addEventListener('click', (e) =>
             {
                 e.stopPropagation();
-                this.downloadLesson(lesson.id);
+                window.open(lesson.url, '_blank');
             });
 
             lessonElement.addEventListener('click', () => this.loadLesson(index, true));
@@ -130,35 +143,53 @@ class LessonPlayer
         this.currentLessonIndex = index;
         const lesson = this.lessons[index];
 
-        // Check if it's a Google Drive link
-        if (lesson.url.includes('drive.google.com'))
+        // 1. Google Drive Proxy Logic
+        if (lesson.url && lesson.url.includes('drive.google.com'))
         {
-            const fileId = lesson.url.match(/id=([a-zA-Z0-9_-]+)/)[1];
-            // Use your NEW serverless proxy
-            this.audioPlayer.src = `/api/audio?id=${fileId}`;
+            // This regex looks for 'id=' and grabs everything after it until the end or an ampersand
+            const match = lesson.url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+            if (match && match[1])
+            {
+                const fileId = match[1];
+                this.audioPlayer.src = `/api/audio?id=${fileId}`;
+            } else
+            {
+                this.audioPlayer.src = lesson.url;
+            }
         } else
         {
             this.audioPlayer.src = lesson.url;
         }
-        this.audioPlayer.load(); // Force reload the new source
 
-        // Update UI
+        this.audioPlayer.load();
+
+        // Update UI Text
         this.lessonTitle.textContent = lesson.title;
-        this.descriptionList.innerHTML = `<li>${lesson.description}</li>`;
-        this.transcriptionContent.textContent = lesson.transcription || "لا يوجد نص متاح حالياً.";
+        if (this.currentNum) this.currentNum.textContent = index + 1;
 
-        // Load progress
+        // Update Description (Handles arrays or strings)
+        if (Array.isArray(lesson.description))
+        {
+            this.descriptionList.innerHTML = lesson.description.map(item => `<li>${item}</li>`).join('');
+        } else
+        {
+            this.descriptionList.innerHTML = `<li>${lesson.description}</li>`;
+        }
+
+        this.transcriptionContent.innerHTML = lesson.transcription || "لا يوجد نص متاح حالياً.";
+
+        // Restore Progress
         if (this.progress[lesson.id])
         {
             this.audioPlayer.currentTime = this.progress[lesson.id];
         }
 
         localStorage.setItem('lastLessonId', lesson.id);
-        this.updateLessonsList();
+        this.updateLessonsListState();
 
         if (shouldPlay)
         {
-            this.audioPlayer.play().catch(e => console.log("Autoplay blocked or failed:", e));
+            this.audioPlayer.play().catch(e => console.log("Playback failed:", e));
             this.playPauseBtn.textContent = '⏸️';
         } else
         {
@@ -166,7 +197,7 @@ class LessonPlayer
         }
     }
 
-    updateLessonsList()
+    updateLessonsListState()
     {
         const items = this.lessonsContainer.querySelectorAll('.lesson-item');
         items.forEach((item, idx) =>
@@ -190,18 +221,12 @@ class LessonPlayer
 
     playPreviousLesson()
     {
-        if (this.currentLessonIndex > 0)
-        {
-            this.loadLesson(this.currentLessonIndex - 1, true);
-        }
+        if (this.currentLessonIndex > 0) this.loadLesson(this.currentLessonIndex - 1, true);
     }
 
     playNextLesson()
     {
-        if (this.currentLessonIndex < this.lessons.length - 1)
-        {
-            this.loadLesson(this.currentLessonIndex + 1, true);
-        }
+        if (this.currentLessonIndex < this.lessons.length - 1) this.loadLesson(this.currentLessonIndex + 1, true);
     }
 
     skip(seconds)
@@ -216,7 +241,6 @@ class LessonPlayer
         this.progressBar.style.width = `${percent}%`;
         this.currentTimeSpan.textContent = this.formatTime(this.audioPlayer.currentTime);
 
-        // Save current progress
         const currentId = this.lessons[this.currentLessonIndex]?.id;
         if (currentId)
         {
@@ -253,23 +277,36 @@ class LessonPlayer
     {
         const saved = localStorage.getItem('lessonProgress');
         if (saved) this.progress = JSON.parse(saved);
-
         const auto = localStorage.getItem('autoPlayNext');
         if (auto !== null) this.autoPlayNext.checked = auto === 'true';
     }
-
-    downloadLesson(lessonId)
-    {
-        const lesson = this.lessons.find(l => l.id === lessonId);
-        if (lesson)
-        {
-            window.open(lesson.url, '_blank');
-        }
-    }
 }
 
-// Global init
+// Global UI Handlers
+function toggleSidebar()
+{
+    document.getElementById('sidebar').classList.toggle('open');
+}
+
+function switchTab(evt, tabId)
+{
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    evt.currentTarget.classList.add('active');
+}
+
+// Initialize on Load
 document.addEventListener('DOMContentLoaded', () =>
 {
     window.lessonPlayer = new LessonPlayer();
+});
+
+// Auto-close sidebar on mobile after selection
+document.addEventListener('click', (e) =>
+{
+    if (window.innerWidth < 900 && e.target.closest('.lesson-item') && !e.target.closest('.download-btn'))
+    {
+        toggleSidebar();
+    }
 });
