@@ -163,6 +163,26 @@ class LessonPlayer
             this.audioPlayer.playbackRate = speed;
             localStorage.setItem('playbackSpeed', speed); // Save it!
         });
+
+        let isDragging = false;
+
+        const seek = (e) =>
+        {
+            const rect = this.progressContainer.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let pos = (clientX - rect.left) / rect.width;
+            pos = Math.max(0, Math.min(1, 1 - pos)); // Clamp between 0 and 1
+            this.audioPlayer.currentTime = pos * this.audioPlayer.duration;
+        };
+
+        this.progressContainer.addEventListener('mousedown', (e) => { isDragging = true; seek(e); });
+        this.progressContainer.addEventListener('touchstart', (e) => { isDragging = true; seek(e); }, { passive: true });
+
+        window.addEventListener('mousemove', (e) => { if (isDragging) seek(e); });
+        window.addEventListener('touchmove', (e) => { if (isDragging) seek(e); }, { passive: false });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        window.addEventListener('touchend', () => { isDragging = false; });
     }
 
     async loadLessons()
@@ -401,18 +421,24 @@ window.onclick = function (event)
     }
 }
 
-function toggleGlobalSearch()
-{
+function toggleGlobalSearch() {
     const modal = document.getElementById('searchModal');
     const input = document.getElementById('globalSearchInput');
     const isVisible = modal.style.display === 'flex';
 
     modal.style.display = isVisible ? 'none' : 'flex';
-
-    if (!isVisible)
-    {
-        input.value = ''; // Clear previous search
-        document.getElementById('globalSearchResults').innerHTML = '';
+    
+    // Freeze the background to prevent the header from flying away
+    if (!isVisible) {
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        
+        input.value = '';
         setTimeout(() => input.focus(), 100);
+    } else {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
     }
 }
