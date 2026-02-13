@@ -30,7 +30,7 @@
                 <div class="badge-row">
                     <span class="badge">بدون إعلانات</span>
                     <span class="badge">بدون تتبع</span>
-                    <a href="https://codeberg.org/your-repo" class="badge link">مفتوح المصدر</a>
+                    <a href="https://github.com/cppuix/JMASWeb" class="badge link">مفتوح المصدر</a>
                 </div>
             </section>
             <br>
@@ -75,16 +75,55 @@
                 </button>
 
             </div>
+            <div class="search-container">
+                <input type="text" id="lessonSearch" placeholder="ابحث عن درس..." dir="rtl">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </div>
             <div id="lessonsContainer" class="lessons-scroll"></div>
         </aside>
 
         <main class="main-view">
             <header class="title-row">
-                <button onclick="toggleSidebar()" class="menu-btn">☰</button>
                 <h1>جامع مسائل العقيدة الصحيحة</h1>
-                <div class="spacer"></div>
-            </header>
 
+                <div class="header-actions">
+                    
+                    <button onclick="toggleGlobalSearch()" class="close-modal">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </button>
+
+                    <button onclick="toggleSidebar()" class="menu-btn">☰</button>
+                </div>
+                <div id="searchModal" class="modal">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <button class="close-modal" onclick="toggleGlobalSearch()">✕</button>
+                            <h3 style="margin:0">بحث شامل</h3>
+                        </div>
+                        <div class="modal-body">
+                            <input type="text" id="globalSearchInput"
+                                placeholder="ابحث في الدروس، الوصف، أو التواريخ..."
+                                style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; font-family:inherit; outline:none;">
+                            <div class="search-filters">
+                                <label><input type="checkbox" id="searchTitles" checked> العناوين</label>
+                                <label><input type="checkbox" id="searchDesc" checked> الوصف</label>
+                                <label><input type="checkbox" id="searchDates"> التواريخ</label>
+                            </div>
+                            <div id="globalSearchResults" style="margin-top:20px; max-height:60vh; overflow-y:auto;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </header>
+<hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
             <section class="meta-row">
                 <div id="lessonCounter">الدرس <span id="currentNum">1</span> من <span id="totalNum">--</span></div>
             </section>
@@ -126,8 +165,10 @@
 
             <section class="content-section">
                 <nav class="tab-nav">
-                    <button class="tab-btn active" style="font-family: 'Tajawal', sans-serif;" onclick="switchTab(event, 'tab-description')">الوصف</button>
-                    <button class="tab-btn" style="font-family: 'Tajawal', sans-serif;" onclick="switchTab(event, 'tab-transcript')">النص المكتوب</button>
+                    <button class="tab-btn active" style="font-family: 'Tajawal', sans-serif;"
+                        onclick="switchTab(event, 'tab-description')">الوصف</button>
+                    <button class="tab-btn" style="font-family: 'Tajawal', sans-serif;"
+                        onclick="switchTab(event, 'tab-transcript')">النص المكتوب</button>
                 </nav>
 
                 <div class="scrollable-content">

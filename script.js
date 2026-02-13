@@ -1,9 +1,9 @@
 // Add these constants to the top of your script.js
-const ICON_PLAY = "M8 5v14l11-7z"; 
+const ICON_PLAY = "M8 5v14l11-7z";
 const ICON_PAUSE = "M6 5h4v14H6zm8 0h4v14h-4z"; // Perfectly symmetrical pause bars
 class LessonPlayer
 {
-    
+
     constructor()
     {
         // Core Elements
@@ -79,6 +79,9 @@ class LessonPlayer
         {
             const rect = this.progressContainer.getBoundingClientRect();
             const pos = (e.clientX - rect.left) / rect.width;
+            // The RTL Flip: Since 0% is on the right, 
+            // we subtract the left-to-right position from 1.
+            pos = 1 - pos;
             this.audioPlayer.currentTime = pos * this.audioPlayer.duration;
         });
 
@@ -89,6 +92,76 @@ class LessonPlayer
         this.autoPlayNext.addEventListener('change', (e) =>
         {
             localStorage.setItem('autoPlayNext', e.target.checked);
+        });
+
+        document.getElementById('lessonSearch').addEventListener('input', (e) =>
+        {
+            const term = e.target.value.toLowerCase();
+            const items = this.lessonsContainer.querySelectorAll('.lesson-item');
+
+            items.forEach((item, index) =>
+            {
+                const title = this.lessons[index].title.toLowerCase();
+                // Show/Hide based on match
+                item.style.display = title.includes(term) ? 'flex' : 'none';
+            });
+        });
+
+        document.getElementById('globalSearchInput').addEventListener('input', (e) =>
+        {
+            const term = e.target.value.toLowerCase();
+            const resultsDiv = document.getElementById('globalSearchResults');
+
+            // Checkboxes
+            const useTitles = document.getElementById('searchTitles').checked;
+            const useDesc = document.getElementById('searchDesc').checked;
+            const useDates = document.getElementById('searchDates').checked;
+
+            if (term.length < 2)
+            {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
+            const matches = window.lessonPlayer.lessons.filter(l =>
+            {
+                const titleMatch = useTitles && l.title.toLowerCase().includes(term);
+                const dateMatch = useDates && l.date?.includes(term);
+                const descText = Array.isArray(l.description) ? l.description.join(' ') : (l.description || '');
+                const descMatch = useDesc && descText.toLowerCase().includes(term);
+
+                return titleMatch || dateMatch || descMatch;
+            });
+
+            resultsDiv.innerHTML = matches.map(l =>
+            {
+                // Build the "Found Info" snippet
+                let foundSnippet = "";
+                const descText = Array.isArray(l.description) ? l.description.join(' ') : (l.description || '');
+
+                if (useDesc && descText.toLowerCase().includes(term))
+                {
+                    const idx = descText.toLowerCase().indexOf(term);
+                    foundSnippet = `<p>...${descText.substring(idx - 20, idx + 40)}...</p>`;
+                } else if (useDates && l.date?.includes(term))
+                {
+                    foundSnippet = `<p>التاريخ المطابق: ${l.date}</p>`;
+                }
+
+                return `
+            <div class="search-result-card" onclick="window.lessonPlayer.loadLesson(${window.lessonPlayer.lessons.indexOf(l)}, true); toggleGlobalSearch();">
+                <strong>${l.title}</strong>
+                ${foundSnippet}
+            </div>
+        `;
+            }).join('');
+        });
+
+        this.speedSelect.addEventListener('change', (e) =>
+        {
+            const speed = parseFloat(e.target.value);
+            this.audioPlayer.playbackRate = speed;
+            localStorage.setItem('playbackSpeed', speed); // Save it!
         });
     }
 
@@ -146,38 +219,20 @@ class LessonPlayer
         this.currentLessonIndex = index;
         const lesson = this.lessons[index];
 
-        // 1. Google Drive Proxy Logic
-        if (lesson.url && lesson.url.includes('drive.google.com'))
-        {
-            // This regex looks for 'id=' and grabs everything after it until the end or an ampersand
-            const match = lesson.url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-            if (match && match[1])
-            {
-                const fileId = match[1];
-                this.audioPlayer.src = `/api/audio?id=${fileId}`;
-            } else
-            {
-                this.audioPlayer.src = lesson.url;
-            }
-        } else
-        {
-            this.audioPlayer.src = lesson.url;
-        }
+        // Handle Google Drive or Direct URL
+        const fileId = lesson.url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1];
+        this.audioPlayer.src = fileId ? `/api/audio?id=${fileId}` : lesson.url;
 
-        this.audioPlayer.preload = "auto";
         this.audioPlayer.load();
 
-        // Update UI Text
-        if (this.currentNum) this.currentNum.textContent = index + 1;
+        // re-apply the user's preferred speed
+        this.audioPlayer.playbackRate = parseFloat(this.speedSelect.value);
 
-        // Update Description (Handles arrays or strings)
-        if (Array.isArray(lesson.description))
-        {
-            this.descriptionList.innerHTML = lesson.description.map(item => `<li>${item}</li>`).join('');
-        } else
-        {
-            this.descriptionList.innerHTML = `<li>${lesson.description}</li>`;
-        }
+        // UI Updates
+        if (this.currentNum) this.currentNum.textContent = index + 1;
+        this.descriptionList.innerHTML = Array.isArray(lesson.description)
+            ? lesson.description.map(item => `<li>${item}</li>`).join('')
+            : `<li>${lesson.description}</li>`;
 
         this.transcriptionContent.innerHTML = lesson.transcription || "لا يوجد نص متاح حالياً.";
 
@@ -190,14 +245,15 @@ class LessonPlayer
         localStorage.setItem('lastLessonId', lesson.id);
         this.updateLessonsListState();
 
+        // Use Constants for Icon
         const iconPath = this.playPauseBtn.querySelector('path');
         if (shouldPlay)
         {
-            this.audioPlayer.play().catch(e => console.log("Playback failed:", e));
-            iconPath.setAttribute('d', "M6 5h4v14H6zm8 0h4v14h-4z");
+            this.audioPlayer.play().catch(e => console.log("Autoplay blocked"));
+            iconPath.setAttribute('d', ICON_PAUSE);
         } else
         {
-            iconPath.setAttribute('d', "M8 5v14l11-7z");
+            iconPath.setAttribute('d', ICON_PLAY);
         }
     }
 
@@ -213,15 +269,14 @@ class LessonPlayer
     togglePlayPause()
     {
         const iconPath = this.playPauseBtn.querySelector('path');
-
-        if (this.audioPlayer.paused) {
+        if (this.audioPlayer.paused)
+        {
             this.audioPlayer.play();
-            // Set to PAUSE icon
-            iconPath.setAttribute('d', "M6 5h4v14H6zm8 0h4v14h-4z");
-        } else {
+            iconPath.setAttribute('d', ICON_PAUSE);
+        } else
+        {
             this.audioPlayer.pause();
-            // Set to PLAY icon
-            iconPath.setAttribute('d', "M8 5v14l11-7z");
+            iconPath.setAttribute('d', ICON_PLAY);
         }
     }
 
@@ -262,14 +317,14 @@ class LessonPlayer
 
     handleAudioEnded()
     {
-        const iconPath = this.playPauseBtn.querySelector('path');
         if (this.autoPlayNext.checked)
         {
             this.playNextLesson();
         } else
         {
-            this.playPauseBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>`;
-            iconPath.setAttribute('d', "M8 5v14l11-7z");
+            // Just switch the path, don't overwrite the whole innerHTML
+            const iconPath = this.playPauseBtn.querySelector('path');
+            if (iconPath) iconPath.setAttribute('d', ICON_PLAY);
         }
     }
 
@@ -285,8 +340,16 @@ class LessonPlayer
     {
         const saved = localStorage.getItem('lessonProgress');
         if (saved) this.progress = JSON.parse(saved);
+
         const auto = localStorage.getItem('autoPlayNext');
         if (auto !== null) this.autoPlayNext.checked = auto === 'true';
+
+        const savedSpeed = localStorage.getItem('playbackSpeed');
+        if (savedSpeed)
+        {
+            this.speedSelect.value = savedSpeed;
+            this.audioPlayer.playbackRate = parseFloat(savedSpeed);
+        }
     }
 }
 
@@ -321,16 +384,35 @@ document.addEventListener('click', (e) =>
 
 // ABOUT MODAL
 
-function toggleAbout() {
+function toggleAbout()
+{
     const modal = document.getElementById('aboutModal');
     const isVisible = modal.style.display === 'flex';
     modal.style.display = isVisible ? 'none' : 'flex';
 }
 
 // Close modal if clicking outside the content box
-window.onclick = function(event) {
+window.onclick = function (event)
+{
     const modal = document.getElementById('aboutModal');
-    if (event.target == modal) {
+    if (event.target == modal)
+    {
         modal.style.display = "none";
+    }
+}
+
+function toggleGlobalSearch()
+{
+    const modal = document.getElementById('searchModal');
+    const input = document.getElementById('globalSearchInput');
+    const isVisible = modal.style.display === 'flex';
+
+    modal.style.display = isVisible ? 'none' : 'flex';
+
+    if (!isVisible)
+    {
+        input.value = ''; // Clear previous search
+        document.getElementById('globalSearchResults').innerHTML = '';
+        setTimeout(() => input.focus(), 100);
     }
 }

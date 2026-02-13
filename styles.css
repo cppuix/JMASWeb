@@ -95,25 +95,32 @@ html
 }
 
 /* 5% ROW: TITLE */
-.title-row
-{
-    height: 50px;
+.title-row {
     display: flex;
+    flex-direction: row; /* Standard flex flow */
     align-items: center;
-    padding: 0 1rem;
-    background: white;
-    border-bottom: 1px solid #eee;
-
-    justify-content: space-between;
+    gap: 12px;
+    padding: 0 15px;
+    height: 60px;
+    direction: rtl; /* Ensure we are working in RTL logic */
 }
 
-.title-row h1
-{
-    font-family: 'Amiri', serif;
-    font-size: 1.2rem;
-    color: var(--primary);
-    flex: 1;
-    text-align: center;
+.title-row h1 {
+    flex: 1; /* Pushes the icons to the far opposite side */
+    text-align: right; /* Align text to the start of the line */
+    font-size: clamp(1rem, 4.5vw, 1.3rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* Group the icons on the left */
+.header-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .menu-btn
@@ -162,21 +169,26 @@ html
     max-width: 600px;
 }
 
-.progress-bar
-{
+.progress-bar {
     width: 100%;
     height: 6px;
     background: #eee;
     border-radius: 10px;
     cursor: pointer;
+    /* Ensure the container itself follows RTL flow */
+    direction: rtl; 
+    position: relative; 
 }
 
-.progress
-{
+.progress {
     height: 100%;
     background: var(--primary);
     border-radius: 10px;
     width: 0%;
+    /* Anchor to the right for RTL */
+    position: absolute;
+    right: 0; 
+    top: 0;
 }
 
 .time-row
@@ -675,4 +687,90 @@ button:active
     background: #fff;
     border-color: var(--accent);
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+
+/*#################### INDEX SEARCH #########################*/
+
+.search-container {
+    padding: 10px 15px;
+    position: relative;
+    border-bottom: 1px solid #eee;
+}
+
+#lessonSearch {
+    width: 100%;
+    padding: 8px 35px 8px 10px; /* Space for the icon on the right */
+    border-radius: 20px;
+    border: 1px solid #e0e0e0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#lessonSearch:focus {
+    border-color: var(--primary);
+}
+
+.search-icon {
+    position: absolute;
+    right: 25px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: #999;
+    pointer-events: none;
+}
+
+/*#################### GLOBAL SEARCH #########################*/
+
+.search-result-card {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.search-result-card:hover {
+    background: #f0f4f0;
+}
+
+.search-result-card strong {
+    color: var(--primary);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.search-result-card small {
+    color: #888;
+    display: block;
+}
+
+.search-filters {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.search-filters label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.search-result-card p {
+    font-size: 0.85rem;
+    color: #555;
+    margin-top: 5px;
+    line-height: 1.4;
+    background: #f9f9f9;
+    padding: 5px;
+    border-radius: 4px;
 }
