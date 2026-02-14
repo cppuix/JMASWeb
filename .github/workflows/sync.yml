@@ -7,6 +7,10 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # Added permissions to allow the bot to push the JSON update back to your repo
+    permissions:
+      contents: write
+      
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -18,7 +22,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install telethon google-api-python-client google-auth-oauthlib
+          pip install telethon google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
       - name: Run Sync Script
         env:
