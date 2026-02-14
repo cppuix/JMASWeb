@@ -25,7 +25,9 @@ jobs:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
           TG_SESSION: ${{ secrets.TG_SESSION }}
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
         run: python automation/sync_lessons.py
 
       - name: Commit and Push Changes
