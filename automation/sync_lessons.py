@@ -76,12 +76,25 @@ async def main():
                 
                 file_id = get_drive_file_id(filename)
                 
+                # Change this block in your sync_lessons.py:
                 if not file_id:
                     print(f"Uploading {filename} to Drive...")
                     audio_data = await message.download_media(file=bytes)
-                    file_metadata = {'name': filename, 'parents': [FOLDER_ID]}
+                    
+                    # Add 'supportsAllDrives=True' and check parent permissions
+                    file_metadata = {
+                        'name': filename, 
+                        'parents': [FOLDER_ID]
+                    }
                     media = MediaIoBaseUpload(io.BytesIO(audio_data), mimetype='audio/mpeg')
-                    drive_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+                    
+                    # Add supportsAllDrives=True to the execution
+                    drive_file = drive_service.files().create(
+                        body=file_metadata, 
+                        media_body=media, 
+                        fields='id',
+                        supportsAllDrives=True # Add this
+                    ).execute()
                     file_id = drive_file.get('id')
                 else:
                     print(f"File {filename} exists. Skipping upload.")
