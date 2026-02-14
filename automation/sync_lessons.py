@@ -58,7 +58,7 @@ async def main():
     with open('lessons.json', 'r', encoding='utf-8') as f:
         lessons = json.load(f)
     
-    last_id = 782 
+    last_id = max([get_num_from_title(l.get('title')) for l in lessons]) if lessons else 0
 
     async for message in tg_client.iter_messages('@D_faisl', limit=350):
         if message.audio and message.text:
