@@ -33,12 +33,10 @@ def parse_telegram_text(text):
     
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     
-    # Title logic: Use first line as title to match your example format
+    # Title logic
     title = f"الدرس {lesson_id}" if lesson_id else lines[0]
-    
     # Description logic: Join with <br>
     description_html = " <br> ".join(lines)
-    
     date_str = next((l for l in lines if "144" in l), "")
     
     return {
@@ -48,32 +46,34 @@ def parse_telegram_text(text):
         "date": date_str
     }
 
+# Helper to extract number from title string like "الدرس 782"
+def get_num_from_title(title_str):
+    match = re.search(r"(\d+)", str(title_str))
+    return int(match.group(1)) if match else 0
+
 async def main():
     await tg_client.start()
     
-    # Load JSON
     with open('lessons.json', 'r', encoding='utf-8') as f:
         lessons = json.load(f)
     
-    # Set this to 782 manually for your reconstruction run
-    # After this run, change it back to: max([l['id'] for l in lessons])
+    # For this reconstruction run:
     last_id = 782 
 
-    # We need a higher limit to go back from 852 to 782 (~70 lessons)
+    # Limit=350 to ensure we go deep enough into history
     async for message in tg_client.iter_messages('@D_faisl', limit=350):
         if message.audio and message.text:
             parsed_data = parse_telegram_text(message.text)
             lesson_id = parsed_data["id"]
 
             if lesson_id and lesson_id > last_id:
-                # Check if JSON already has this ID to avoid duplicates
-                if any(l['id'] == lesson_id for l in lessons):
+                # Check if JSON already has this lesson number in the title
+                if any(get_num_from_title(l.get('title')) == lesson_id for l in lessons):
                     continue
 
                 filename = f"الدرس {lesson_id}.mp3"
                 print(f"Processing Lesson {lesson_id}...")
                 
-                # Check Google Drive first
                 file_id = get_drive_file_id(filename)
                 
                 if not file_id:
@@ -84,23 +84,23 @@ async def main():
                     drive_file = drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
                     file_id = drive_file.get('id')
                 else:
-                    print(f"File {filename} already exists in Drive. Skipping upload.")
+                    print(f"File {filename} exists. Skipping upload.")
 
-                # Add to JSON list
+                # Add to JSON using your EXACT format (no 'id' key)
                 lessons.append({
-                    "id": lesson_id,
-                    "title": parsed_data["title"],
+                    "title": f"الدرس {lesson_id}",
                     "file": filename,
                     "description": parsed_data["description"],
                     "date": parsed_data["date"],
                     "url": f"https://drive.google.com/uc?export=download&id={file_id}"
                 })
 
-    # Final Sort and Save
-    lessons.sort(key=lambda x: x['id'])
+    # Sort based on the number inside the title
+    lessons.sort(key=lambda x: get_num_from_title(x.get('title')))
+
     with open('lessons.json', 'w', encoding='utf-8') as f:
         json.dump(lessons, f, ensure_ascii=False, indent=4)
-    print("All caught up and JSON reconstructed!")
+    print("Reconstruction complete!")
 
 with tg_client:
     tg_client.loop.run_until_complete(main())
