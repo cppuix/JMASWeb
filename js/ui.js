@@ -143,24 +143,29 @@ function _renderLessonsList() {
 
         div.querySelector('.download-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
-            const btn = e.currentTarget;
+            const btn     = e.currentTarget;
+            if (btn.disabled) return;
+
             const lessons = getLessons();
             const lesson  = lessons[index];
             const nowCached = _offlineLessons.has(lesson.id);
+
             if (nowCached) {
                 deleteCachedLesson(lesson);
                 _offlineLessons.delete(lesson.id);
                 _toast('تم حذف الدرس من التخزين');
                 _updateLessonItem(index);
             } else {
+                btn.disabled = true;
                 btn.classList.add('loading');
                 _toast('جارٍ التحميل...');
                 cacheLesson(lesson);
             }
         });
 
-        div.addEventListener('click', () => {
-            _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson.id] ?? 0 });
+        div.addEventListener('click', async () => {
+            const blobUrl = await getCachedBlobUrl(lesson).catch(() => null);
+            _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson.id] ?? 0, srcOverride: blobUrl });
             if (window.innerWidth < 900) toggleSidebar();
         });
 
@@ -300,6 +305,47 @@ function _bindBusEvents() {
             _updateLessonItem(_currentIndex);
         }
     });
+
+    // ── PWA cache events ──────────────────────────────────────
+
+    bus.on('cachedLessonsLoaded', ({ urls }) => {
+        const lessons = getLessons();
+        lessons.forEach((l, i) => {
+            if (urls.some(u => u.includes(String(l.id)))) {
+                _offlineLessons.add(l.id);
+                _updateLessonItem(i);
+            }
+        });
+    });
+
+    bus.on('lessonCached', ({ lessonId }) => {
+        const lessons = getLessons();
+        const index = lessons.findIndex(l => l.id === lessonId);
+        if (index !== -1) {
+            _offlineLessons.add(lessonId);
+            const btn = el.lessonsContainer.querySelector(`[data-index="${index}"] .download-btn`);
+            if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+            _toast('تم الحفظ للاستخدام دون إنترنت ✓');
+            _updateLessonItem(index);
+        }
+    });
+
+    bus.on('lessonCacheFailed', ({ lessonId }) => {
+        const lessons = getLessons();
+        const index = lessons.findIndex(l => l.id === lessonId);
+        if (index !== -1) {
+            const btn = el.lessonsContainer.querySelector(`[data-index="${index}"] .download-btn`);
+            if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+        }
+        _toast('فشل التحميل، حاول مرة أخرى');
+    });
+
+    bus.on('lessonUncached', ({ lessonId }) => {
+        _offlineLessons.delete(lessonId);
+        const lessons = getLessons();
+        const index = lessons.findIndex(l => l.id === lessonId);
+        if (index !== -1) _updateLessonItem(index);
+    });
 }
 
 function _setPlayIcon(state) {
@@ -369,10 +415,11 @@ function _bindSearchControls() {
         }).join('');
 
         el.globalSearchResults.querySelectorAll('.search-result-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const index = parseInt(card.dataset.index, 10);
-                const lesson = lessons[index];
-                _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson?.id] ?? 0 });
+            card.addEventListener('click', async () => {
+                const index   = parseInt(card.dataset.index, 10);
+                const lesson  = lessons[index];
+                const blobUrl = await getCachedBlobUrl(lesson).catch(() => null);
+                _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson?.id] ?? 0, srcOverride: blobUrl });
                 toggleGlobalSearch();
             });
         });

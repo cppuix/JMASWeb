@@ -1,16 +1,6 @@
 /**
- * player.js
- * Pure audio engine. Knows nothing about the DOM beyond the <audio> element.
- * Communicates entirely through a tiny event bus so UI and storage can react
- * without the player knowing they exist.
- *
- * Events emitted (via bus.emit):
- *   'lessonLoaded'   { lesson, index }
- *   'play'           { lesson, index }
- *   'pause'          { lesson, index }
- *   'timeupdate'     { currentTime, duration, percent }
- *   'ended'          { lesson, index }
- *   'speedChanged'   { speed }
+ * player.js — Pure audio engine.
+ * Communicates via the bus instance passed to the constructor.
  */
 
 import { resolveAudioUrl } from './lessons.js';
@@ -21,21 +11,18 @@ const ICON_PAUSE = 'M6 5h4v14H6zm8 0h4v14h-4z';
 
 export class Player {
     constructor(audioEl, bus) {
-        this.audio   = audioEl;
-        this.bus     = bus;
-        this.lessons = [];
-        this.index   = 0;
-        this.speed   = 1;
+        this.audio        = audioEl;
+        this.bus          = bus;
+        this.lessons      = [];
+        this.index        = 0;
+        this.speed        = 1;
         this.autoPlayNext = true;
-
+        this._blobUrl     = null;
         this._bindAudioEvents();
     }
 
-    // ── Configuration ─────────────────────────────────────────────────────────
-
-    setLessons(lessons) {
-        this.lessons = lessons;
-    }
+    setLessons(lessons)      { this.lessons = lessons; }
+    setAutoPlayNext(val)     { this.autoPlayNext = val; }
 
     setSpeed(speed) {
         this.speed = speed;
@@ -43,36 +30,29 @@ export class Player {
         this.bus.emit('speedChanged', { speed });
     }
 
-    setAutoPlayNext(val) {
-        this.autoPlayNext = val;
-    }
-
-    // ── Playback control ──────────────────────────────────────────────────────
-
     async loadLesson(index, { play = true, resumeTime = 0 } = {}) {
         if (index < 0 || index >= this.lessons.length) return;
 
         this.index = index;
         const lesson = this.lessons[index];
 
-        // Use cached blob if available, otherwise resolve remote URL
+        // Try cached blob first, fall back to remote URL
         let src = resolveAudioUrl(lesson);
         try {
             const blobUrl = await getCachedBlobUrl(lesson);
             if (blobUrl) {
-                // Revoke previous blob URL to free memory
                 if (this._blobUrl) URL.revokeObjectURL(this._blobUrl);
                 this._blobUrl = blobUrl;
                 src = blobUrl;
             }
-        } catch { /* fall through to remote URL */ }
+        } catch { /* use remote */ }
 
         this.audio.src = src;
         this.audio.load();
         this.audio.playbackRate = this.speed;
 
-        // Reset duration display immediately so "only set once" logic in ui.js works
-        bus.emit('timeupdate', { currentTime: 0, duration: 0, percent: 0 });
+        // Reset progress bar display immediately
+        this.bus.emit('timeupdate', { currentTime: 0, duration: 0, percent: 0 });
 
         if (resumeTime > 0) {
             const restore = () => {
@@ -86,23 +66,14 @@ export class Player {
 
         if (play) {
             this.audio.play().catch(() => {
-                // Autoplay blocked — emit pause so UI shows correct icon
                 this.bus.emit('pause', { lesson, index });
             });
         }
     }
 
-    play() {
-        this.audio.play();
-    }
-
-    pause() {
-        this.audio.pause();
-    }
-
-    togglePlayPause() {
-        this.audio.paused ? this.play() : this.pause();
-    }
+    play()   { this.audio.play(); }
+    pause()  { this.audio.pause(); }
+    togglePlayPause() { this.audio.paused ? this.play() : this.pause(); }
 
     skip(seconds) {
         this.audio.currentTime = Math.max(0, Math.min(
@@ -112,43 +83,21 @@ export class Player {
     }
 
     seekTo(fraction) {
-        // fraction is 0–1, where 0 = start, 1 = end
         if (this.audio.duration) {
             this.audio.currentTime = fraction * this.audio.duration;
         }
     }
 
-    next() {
-        if (this.index < this.lessons.length - 1) {
-            this.loadLesson(this.index + 1, { play: true });
-        }
-    }
+    next() { if (this.index < this.lessons.length - 1) this.loadLesson(this.index + 1, { play: true }); }
+    prev() { if (this.index > 0) this.loadLesson(this.index - 1, { play: true }); }
 
-    prev() {
-        if (this.index > 0) {
-            this.loadLesson(this.index - 1, { play: true });
-        }
-    }
+    get currentLesson() { return this.lessons[this.index]; }
+    get currentTime()   { return this.audio.currentTime; }
+    get duration()      { return this.audio.duration; }
+    get paused()        { return this.audio.paused; }
 
-    // ── Getters ───────────────────────────────────────────────────────────────
-
-    get currentLesson() {
-        return this.lessons[this.index];
-    }
-
-    get currentTime() {
-        return this.audio.currentTime;
-    }
-
-    get duration() {
-        return this.audio.duration;
-    }
-
-    get paused() {
-        return this.audio.paused;
-    }
-
-    // ── Internal ──────────────────────────────────────────────────────────────
+    static get ICON_PLAY()  { return ICON_PLAY; }
+    static get ICON_PAUSE() { return ICON_PAUSE; }
 
     _bindAudioEvents() {
         this.audio.addEventListener('play', () => {
@@ -176,9 +125,4 @@ export class Player {
             if (this.autoPlayNext) this.next();
         });
     }
-
-    // ── Icon helpers (used by UI) ─────────────────────────────────────────────
-
-    static get ICON_PLAY()  { return ICON_PLAY; }
-    static get ICON_PAUSE() { return ICON_PAUSE; }
 }
