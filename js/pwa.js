@@ -1,15 +1,113 @@
 /**
  * pwa.js
- * Handles:
- *   1. Service worker registration
- *   2. Per-lesson offline audio caching (via SW messages)
- *   3. Media Session API (lock screen / notification controls)
+ * 1. Service worker registration (app shell caching)
+ * 2. Per-lesson offline audio — stored as blobs in IndexedDB
+ *    (avoids CORS issues with Google Drive / proxied URLs entirely)
+ * 3. Media Session API — lock screen & notification controls
  */
 
 import bus from './bus.js';
 import { resolveAudioUrl } from './lessons.js';
 
-let _cachedUrls = new Set();
+const DB_NAME    = 'jmas_db';      // same DB as storage.js
+const STORE_NAME = 'audio_blobs';  // new object store
+
+// ── IndexedDB audio store ─────────────────────────────────────
+let _audioDB = null;
+
+async function openAudioDB() {
+    if (_audioDB) return _audioDB;
+    return new Promise((resolve, reject) => {
+        // Open with version 2 to add the audio_blobs store
+        const req = indexedDB.open(DB_NAME, 2);
+        req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('preferences')) {
+                db.createObjectStore('preferences');
+            }
+            if (!db.objectStoreNames.contains('progress')) {
+                db.createObjectStore('progress', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains('bookmarks')) {
+                db.createObjectStore('bookmarks', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains('completions')) {
+                db.createObjectStore('completions', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+        req.onsuccess  = (e) => { _audioDB = e.target.result; resolve(_audioDB); };
+        req.onerror    = (e) => reject(e.target.error);
+    });
+}
+
+function wrap(req) {
+    return new Promise((res, rej) => {
+        req.onsuccess = () => res(req.result);
+        req.onerror   = () => rej(req.error);
+    });
+}
+
+export async function getCachedLessonIds() {
+    const db   = await openAudioDB();
+    const keys = await wrap(db.transaction(STORE_NAME).objectStore(STORE_NAME).getAllKeys());
+    return new Set(keys);
+}
+
+export async function isCachedById(lessonId) {
+    const db  = await openAudioDB();
+    const rec = await wrap(db.transaction(STORE_NAME).objectStore(STORE_NAME).get(lessonId));
+    return !!rec;
+}
+
+export function isCached(lesson) {
+    // Synchronous check not possible with IDB — use isCachedById for async
+    return false;
+}
+
+export async function cacheLesson(lesson) {
+    const url = resolveAudioUrl(lesson);
+    bus.emit('cachingLesson', { lesson });
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const db   = await openAudioDB();
+        await wrap(
+            db.transaction(STORE_NAME, 'readwrite')
+              .objectStore(STORE_NAME)
+              .put({ id: lesson.id, blob, cachedAt: Date.now() })
+        );
+        bus.emit('lessonCached', { lessonId: lesson.id });
+    } catch (err) {
+        console.error('[pwa] cache failed:', err);
+        bus.emit('lessonCacheFailed', { lessonId: lesson.id });
+    }
+}
+
+export async function deleteCachedLesson(lesson) {
+    const db = await openAudioDB();
+    await wrap(
+        db.transaction(STORE_NAME, 'readwrite')
+          .objectStore(STORE_NAME)
+          .delete(lesson.id)
+    );
+    bus.emit('lessonUncached', { lessonId: lesson.id });
+}
+
+/**
+ * Get a blob URL for a cached lesson.
+ * Call URL.revokeObjectURL() when done to free memory.
+ * Returns null if not cached.
+ */
+export async function getCachedBlobUrl(lesson) {
+    const db  = await openAudioDB();
+    const rec = await wrap(db.transaction(STORE_NAME).objectStore(STORE_NAME).get(lesson.id));
+    if (!rec) return null;
+    return URL.createObjectURL(rec.blob);
+}
 
 // ── Service Worker registration ───────────────────────────────
 export async function registerSW() {
@@ -17,59 +115,8 @@ export async function registerSW() {
     try {
         await navigator.serviceWorker.register('/sw.js', { scope: '/' });
         console.info('[pwa] Service worker registered');
-        navigator.serviceWorker.addEventListener('message', _onSWMessage);
-        // Ask SW which lessons are already cached
-        _postToSW({ type: 'GET_CACHED_LESSONS' });
     } catch (err) {
         console.warn('[pwa] SW registration failed:', err);
-    }
-}
-
-// ── Offline audio caching ─────────────────────────────────────
-export function isCached(lesson) {
-    return _cachedUrls.has(resolveAudioUrl(lesson));
-}
-
-export function cacheLesson(lesson) {
-    const url = resolveAudioUrl(lesson);
-    _postToSW({ type: 'CACHE_AUDIO', url, lessonId: lesson.id });
-    bus.emit('cachingLesson', { lesson });
-}
-
-export function deleteCachedLesson(lesson) {
-    const url = resolveAudioUrl(lesson);
-    _postToSW({ type: 'DELETE_AUDIO', url, lessonId: lesson.id });
-}
-
-function _postToSW(message) {
-    if (navigator.serviceWorker?.controller) {
-        navigator.serviceWorker.controller.postMessage(message);
-    } else {
-        // SW not yet controlling — retry after it takes control
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-            navigator.serviceWorker.controller?.postMessage(message);
-        }, { once: true });
-    }
-}
-
-function _onSWMessage(e) {
-    const { type, lessonId, urls, ok } = e.data;
-
-    if (type === 'CACHED_LESSONS') {
-        _cachedUrls = new Set(urls);
-        bus.emit('cachedLessonsLoaded', { urls });
-    }
-    if (type === 'AUDIO_CACHED') {
-        if (ok) {
-            _cachedUrls.add(e.data.url);
-            bus.emit('lessonCached', { lessonId });
-        } else {
-            bus.emit('lessonCacheFailed', { lessonId });
-        }
-    }
-    if (type === 'AUDIO_DELETED') {
-        _cachedUrls.delete(e.data.url);
-        bus.emit('lessonUncached', { lessonId });
     }
 }
 
@@ -89,7 +136,6 @@ export function setupMediaSession() {
         });
     });
 
-    // Wire OS controls → player via bus
     const handlers = {
         play:          () => bus.emit('mediaSessionAction', { action: 'play' }),
         pause:         () => bus.emit('mediaSessionAction', { action: 'pause' }),
@@ -102,14 +148,17 @@ export function setupMediaSession() {
 
     for (const [action, handler] of Object.entries(handlers)) {
         try { navigator.mediaSession.setActionHandler(action, handler); }
-        catch { /* not supported */ }
+        catch { /* not supported on this platform */ }
     }
 
-    // Keep OS progress bar in sync
     bus.on('timeupdate', ({ currentTime, duration }) => {
         if (!duration) return;
         try {
-            navigator.mediaSession.setPositionState({ duration, position: Math.min(currentTime, duration), playbackRate: 1 });
+            navigator.mediaSession.setPositionState({
+                duration,
+                position: Math.min(currentTime, duration),
+                playbackRate: 1,
+            });
         } catch { /* ignore */ }
     });
 }

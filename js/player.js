@@ -14,6 +14,7 @@
  */
 
 import { resolveAudioUrl } from './lessons.js';
+import { getCachedBlobUrl } from './pwa.js';
 
 const ICON_PLAY  = 'M8 5v14l11-7z';
 const ICON_PAUSE = 'M6 5h4v14H6zm8 0h4v14h-4z';
@@ -48,15 +49,30 @@ export class Player {
 
     // ── Playback control ──────────────────────────────────────────────────────
 
-    loadLesson(index, { play = true, resumeTime = 0 } = {}) {
+    async loadLesson(index, { play = true, resumeTime = 0 } = {}) {
         if (index < 0 || index >= this.lessons.length) return;
 
         this.index = index;
         const lesson = this.lessons[index];
 
-        this.audio.src = resolveAudioUrl(lesson);
+        // Use cached blob if available, otherwise resolve remote URL
+        let src = resolveAudioUrl(lesson);
+        try {
+            const blobUrl = await getCachedBlobUrl(lesson);
+            if (blobUrl) {
+                // Revoke previous blob URL to free memory
+                if (this._blobUrl) URL.revokeObjectURL(this._blobUrl);
+                this._blobUrl = blobUrl;
+                src = blobUrl;
+            }
+        } catch { /* fall through to remote URL */ }
+
+        this.audio.src = src;
         this.audio.load();
         this.audio.playbackRate = this.speed;
+
+        // Reset duration display immediately so "only set once" logic in ui.js works
+        bus.emit('timeupdate', { currentTime: 0, duration: 0, percent: 0 });
 
         if (resumeTime > 0) {
             const restore = () => {

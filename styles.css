@@ -187,6 +187,12 @@ html, body {
     color: #fff;
 }
 
+.sidebar-header .close-modal.active {
+    background: var(--gold-dim);
+    color: #fff;
+    border-color: var(--gold-light);
+}
+
 .sidebar-header .close-modal svg {
     width: 14px;
     height: 14px;
@@ -337,6 +343,14 @@ html, body {
 .download-btn:hover { color: var(--green-mid); background: var(--green-wash); }
 .bookmark-btn.active { color: var(--gold); }
 .bookmark-btn.active svg { fill: var(--gold); stroke: var(--gold); }
+.download-btn.active { color: var(--green-mid); }
+.download-btn.active svg { fill: var(--green-mid); stroke: var(--green-mid); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.download-btn.loading svg {
+    animation: spin 0.8s linear infinite;
+    opacity: 0.5;
+}
 
 /* ── Toast notification ────────────────────────────────────── */
 #jmas-toast {
@@ -546,6 +560,10 @@ hr {
     color: var(--ink-faint);
     margin-top: 6px;
     font-variant-numeric: tabular-nums;
+}
+
+.time-row span {
+    min-width: 36px;
 }
 
 /* Controls */
@@ -1057,14 +1075,3 @@ button:active { transform: translateY(1px); }
     .controls-row { gap: 10px; }
     .nav-btn, .skip-btn { width: 30px; height: 30px; }
 }
-
-.download-btn.loading {
-    animation: spin 0.8s linear infinite;
-    opacity: 0.6;
-    pointer-events: none;
-}
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-}
-.download-btn.cached { color: var(--green-mid); }

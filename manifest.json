@@ -1,0 +1,27 @@
+{
+    "name": "جامع مسائل العقيدة الصحيحة",
+    "short_name": "جامع العقيدة",
+    "description": "دروس جامع مسائل العقيدة الصحيحة للشيخ أبي عبد الرحمن فيصل الوادعي",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f5f0e8",
+    "theme_color": "#1a3a1a",
+    "lang": "ar",
+    "dir": "rtl",
+    "icons": [
+        {
+            "src": "icons/logo.jpg",
+            "sizes": "192x192",
+            "type": "image/jpg",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icons/logo.jpg",
+            "sizes": "512x512",
+            "type": "image/jpg",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["education", "music"]
+}

@@ -258,12 +258,19 @@ function _bindBusEvents() {
 
     bus.on('pause', () => {
         _setPlayIcon('play');
+        const lesson = getLessons()[_currentIndex];
+        if (lesson && _player.currentTime > 0) {
+            setProgress(lesson.id, _player.currentTime);
+        }
     });
 
     bus.on('timeupdate', ({ currentTime, duration, percent }) => {
         el.progressBar.style.width = `${percent}%`;
         el.currentTimeSpan.textContent = _formatTime(currentTime);
-        if (duration) el.durationSpan.textContent = _formatTime(duration);
+        // Only set duration once — avoids layout jiggle on seek
+        if (duration && el.durationSpan.textContent === '0:00') {
+            el.durationSpan.textContent = _formatTime(duration);
+        }
 
         // Throttled progress save
         const lesson = getLessons()[_currentIndex];
@@ -286,6 +293,12 @@ function _bindBusEvents() {
 
     bus.on('ended', () => {
         _setPlayIcon('play');
+        const lesson = getLessons()[_currentIndex];
+        if (lesson) {
+            setProgress(lesson.id, 0);
+            _progressMap[lesson.id] = 0;
+            _updateLessonItem(_currentIndex);
+        }
     });
 }
 
@@ -416,6 +429,22 @@ function _bindModalControls() {
 
 export function toggleSidebar() {
     el.sidebar.classList.toggle('open');
+}
+
+let _showingBookmarksOnly = false;
+
+export function toggleBookmarkFilter() {
+    _showingBookmarksOnly = !_showingBookmarksOnly;
+    const btn = document.getElementById('bookmarkFilterBtn');
+    btn?.classList.toggle('active', _showingBookmarksOnly);
+
+    const lessons = getLessons();
+    const items   = el.lessonsContainer.querySelectorAll('.lesson-item');
+    items.forEach((item, i) => {
+        const lesson  = lessons[i];
+        const visible = !_showingBookmarksOnly || _bookmarks.has(lesson?.id);
+        item.style.display = visible ? '' : 'none';
+    });
 }
 
 export function toggleAbout() {

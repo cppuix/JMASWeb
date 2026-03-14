@@ -4,15 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
-    <title>جامع مسائل العقيدة الصحيحة</title>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Tajawal:wght@400;500;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-
-    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1a3a1a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JMAS">
+    <title>جامع مسائل العقيدة الصحيحة</title>
+    <link rel="manifest" href="/manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Tajawal:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
@@ -32,17 +32,14 @@
             <div class="modal-body">
                 <section>
                     <h4>عن المحتوى</h4>
-                    <p>يحتوي هذا الموقع على دروس جامع مسائل العقيدة الصحيحة للشيخ أبي عبد الرحمن فيصل بن مسفر الوادعي
-                        حفظه
+                    <p>يحتوي هذا الموقع على دروس جامع مسائل العقيدة الصحيحة للشيخ أبي عبد الرحمن فيصل بن مسفر الوادعي حفظه
                         الله. تم إنشاؤه تطوعاً.</p>
-                    <p>المصدر: قناة التلجرام بإشراف ابنه أبو حاتم عبد الباري الزنامي الوادعي: <span
-                            class="phone-link">+967
+                    <p>المصدر: قناة التلجرام بإشراف ابنه أبو حاتم عبد الباري الزنامي الوادعي: <span class="phone-link">+967
                             777 484 178</span></p>
                     <div class="badge-row">
                         <span class="badge">بدون إعلانات</span>
                         <span class="badge">بدون تتبع</span>
-                        <a href="https://github.com/cppuix/JMASWeb" class="badge link"
-                            style="display:inline-block;">مفتوح المصدر</a>
+                        <a href="https://github.com/cppuix/JMASWeb" class="badge link" style="display:inline-block;">مفتوح المصدر</a>
                     </div>
                 </section>
                 <br>
@@ -67,6 +64,11 @@
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <h2>قائمة الدروس</h2>
+                <button id="bookmarkFilterBtn" onclick="toggleBookmarkFilter()" class="close-modal" aria-label="المفضلة" title="عرض المفضلة">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                </button>
                 <button onclick="toggleAbout()" class="close-modal" aria-label="About Site">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                         stroke-linejoin="round">
@@ -107,7 +109,7 @@
                     <button id="themeToggle" onclick="toggleTheme()" class="close-modal" aria-label="تبديل المظهر">
                         <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                             stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                         </svg>
                     </button>
                     <button onclick="toggleSidebar()" class="menu-btn" aria-label="القائمة">☰</button>
@@ -128,8 +130,7 @@
                                 <label><input type="checkbox" id="searchDesc" checked> الوصف</label>
                                 <label><input type="checkbox" id="searchDates"> التواريخ</label>
                             </div>
-                            <div id="globalSearchResults" style="margin-top:20px; max-height:60vh; overflow-y:auto;">
-                            </div>
+                            <div id="globalSearchResults" style="margin-top:20px; max-height:60vh; overflow-y:auto;"></div>
                         </div>
                     </div>
                 </div>
