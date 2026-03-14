@@ -67,21 +67,13 @@ class LessonPlayer
         this.prevBtn.addEventListener('click', () => this.playPreviousLesson());
         this.nextBtn.addEventListener('click', () => this.playNextLesson());
 
-        this.speedSelect.addEventListener('change', (e) =>
-        {
-            this.audioPlayer.playbackRate = parseFloat(e.target.value);
-        });
-
         this.skipBackBtn.addEventListener('click', () => this.skip(-5));
         this.skipForwardBtn.addEventListener('click', () => this.skip(5));
 
         this.progressContainer.addEventListener('click', (e) =>
         {
             const rect = this.progressContainer.getBoundingClientRect();
-            const pos = (e.clientX - rect.left) / rect.width;
-            // The RTL Flip: Since 0% is on the right, 
-            // we subtract the left-to-right position from 1.
-            pos = 1 - pos;
+            const pos = 1 - (e.clientX - rect.left) / rect.width; // RTL: flip left-to-right position
             this.audioPlayer.currentTime = pos * this.audioPlayer.duration;
         });
 
@@ -256,10 +248,14 @@ class LessonPlayer
 
         this.transcriptionContent.innerHTML = lesson.transcription || "لا يوجد نص متاح حالياً.";
 
-        // Restore Progress
-        if (this.progress[lesson.id])
-        {
-            this.audioPlayer.currentTime = this.progress[lesson.id];
+        // Restore Progress — must wait for metadata to be ready
+        const savedTime = this.progress[lesson.id];
+        if (savedTime) {
+            const restoreOnce = () => {
+                this.audioPlayer.currentTime = savedTime;
+                this.audioPlayer.removeEventListener('loadedmetadata', restoreOnce);
+            };
+            this.audioPlayer.addEventListener('loadedmetadata', restoreOnce);
         }
 
         localStorage.setItem('lastLessonId', lesson.id);
@@ -374,18 +370,6 @@ class LessonPlayer
 }
 
 // Global UI Handlers
-function toggleSidebar()
-{
-    document.getElementById('sidebar').classList.toggle('open');
-}
-
-function switchTab(evt, tabId)
-{
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    evt.currentTarget.classList.add('active');
-}
 
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', () =>
@@ -411,14 +395,13 @@ function toggleAbout()
     modal.style.display = isVisible ? 'none' : 'flex';
 }
 
-// Close modal if clicking outside the content box
+// Close modals when clicking the backdrop
 window.onclick = function (event)
 {
-    const modal = document.getElementById('aboutModal');
-    if (event.target == modal)
-    {
-        modal.style.display = "none";
-    }
+    const aboutModal = document.getElementById('aboutModal');
+    const searchModal = document.getElementById('searchModal');
+    if (event.target === aboutModal) toggleAbout();
+    if (event.target === searchModal) toggleGlobalSearch();
 }
 
 function toggleGlobalSearch() {

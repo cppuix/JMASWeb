@@ -8,51 +8,61 @@
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Tajawal:wght@400;500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-</head>
-<div id="aboutModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>حول الموقع</h3>
-            <button class="close-modal" onclick="toggleAbout()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <section>
-                <h4>عن المحتوى</h4>
-                <p>يحتوي هذا الموقع على دروس جامع مسائل العقيدة الصحيحة للشيخ أبي عبد الرحمن فيصل بن مسفر الوادعي حفظه
-                    الله. تم إنشاؤه تطوعاً.</p>
-                <p>المصدر: قناة التلجرام بإشراف ابنه أبو حاتم عبد الباري الزنامي الوادعي: <span class="phone-link">+967
-                        777 484 178</span></p>
-                <div class="badge-row">
-                    <span class="badge">بدون إعلانات</span>
-                    <span class="badge">بدون تتبع</span>
-                    <a href="https://github.com/cppuix/JMASWeb" class="badge link">مفتوح المصدر</a>
-                </div>
-            </section>
-            <br>
-            <section>
-                <h4>خصائص الموقع</h4>
-                <ul class="features-list">
-                    <li><span>التحكم في السرعة:</span> تغيير سرعة التشغيل حتى 2x.</li>
-                    <li><span>التقديم والتأخير:</span> الانتقال 5 ثوانٍ للأمام أو للخلف.</li>
-                    <li><span>استئناف الاستماع:</span> حفظ موضع التقدم تلقائياً.</li>
-                    <li><span>التشغيل التلقائي:</span> الانتقال للدرس التالي عند الانتهاء.</li>
-                </ul>
-            </section>
 
-            <section class="contact-section">
-                <p>للمساعدة التقنية أو صيانة الموقع:</p>
-                <a href="mailto:Abderrahmene_mhb@proton.me" class="email-btn">Abderrahmene_mhb@proton.me</a>
-            </section>
-        </div>
-    </div>
-</div>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a3a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
 
 <body>
+
+    <!-- About Modal (fixed: now inside body) -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>حول الموقع</h3>
+                <button class="close-modal" onclick="toggleAbout()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <section>
+                    <h4>عن المحتوى</h4>
+                    <p>يحتوي هذا الموقع على دروس جامع مسائل العقيدة الصحيحة للشيخ أبي عبد الرحمن فيصل بن مسفر الوادعي
+                        حفظه
+                        الله. تم إنشاؤه تطوعاً.</p>
+                    <p>المصدر: قناة التلجرام بإشراف ابنه أبو حاتم عبد الباري الزنامي الوادعي: <span
+                            class="phone-link">+967
+                            777 484 178</span></p>
+                    <div class="badge-row">
+                        <span class="badge">بدون إعلانات</span>
+                        <span class="badge">بدون تتبع</span>
+                        <a href="https://github.com/cppuix/JMASWeb" class="badge link"
+                            style="display:inline-block;">مفتوح المصدر</a>
+                    </div>
+                </section>
+                <br>
+                <section>
+                    <h4>خصائص الموقع</h4>
+                    <ul class="features-list">
+                        <li><span>التحكم في السرعة:</span> تغيير سرعة التشغيل حتى 2x.</li>
+                        <li><span>التقديم والتأخير:</span> الانتقال 5 ثوانٍ للأمام أو للخلف.</li>
+                        <li><span>استئناف الاستماع:</span> حفظ موضع التقدم تلقائياً.</li>
+                        <li><span>التشغيل التلقائي:</span> الانتقال للدرس التالي عند الانتهاء.</li>
+                    </ul>
+                </section>
+                <section class="contact-section">
+                    <p>للمساعدة التقنية أو صيانة الموقع:</p>
+                    <a href="mailto:Abderrahmene_mhb@proton.me" class="email-btn">Abderrahmene_mhb@proton.me</a>
+                </section>
+            </div>
+        </div>
+    </div>
+
     <div class="app-shell">
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
@@ -65,7 +75,6 @@
                         <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                 </button>
-
                 <button onclick="toggleSidebar()" class="close-modal" aria-label="Close Sidebar">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                         stroke-linejoin="round">
@@ -73,7 +82,6 @@
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-
             </div>
             <div class="search-container">
                 <input type="text" id="lessonSearch" placeholder="ابحث عن درس..." dir="rtl">
@@ -88,19 +96,23 @@
         <main class="main-view">
             <header class="title-row">
                 <h1>جامع مسائل العقيدة الصحيحة</h1>
-
                 <div class="header-actions">
-                    
-                    <button onclick="toggleGlobalSearch()" class="close-modal">
+                    <button onclick="toggleGlobalSearch()" class="close-modal" aria-label="بحث">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                             stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </button>
-
-                    <button onclick="toggleSidebar()" class="menu-btn">☰</button>
+                    <button id="themeToggle" onclick="toggleTheme()" class="close-modal" aria-label="تبديل المظهر">
+                        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        </svg>
+                    </button>
+                    <button onclick="toggleSidebar()" class="menu-btn" aria-label="القائمة">☰</button>
                 </div>
+
                 <div id="searchModal" class="modal">
                     <div class="modal-content" style="max-width: 600px;">
                         <div class="modal-header">
@@ -121,9 +133,10 @@
                         </div>
                     </div>
                 </div>
-                
             </header>
-<hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+
+            <hr>
+
             <section class="meta-row">
                 <div id="lessonCounter">الدرس <span id="currentNum">1</span> من <span id="totalNum">--</span></div>
             </section>
@@ -142,11 +155,12 @@
 
                     <div class="controls-row">
                         <button id="prevBtn" class="nav-btn">⏭</button>
-
                         <button style="font-size: 1rem;" id="skipBackBtn" class="skip-btn">↻</button>
-                        <button id="playPauseBtn" class="play-btn"><svg viewBox="0 0 24 24">
+                        <button id="playPauseBtn" class="play-btn">
+                            <svg viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z" fill="currentColor" />
-                            </svg></button>
+                            </svg>
+                        </button>
                         <button style="font-size: 1rem;" id="skipForwardBtn" class="skip-btn">↺</button>
                         <button id="nextBtn" class="nav-btn">⏮</button>
                     </div>
@@ -186,18 +200,8 @@
         </main>
     </div>
 
-    <script src="script.js"></script>
-    <script>
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+    <script type="module" src="js/app.js"></script>
 
-        function switchTab(evt, tabId)
-        {
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            evt.currentTarget.classList.add('active');
-        }
-    </script>
 </body>
 
 </html>
