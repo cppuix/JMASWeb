@@ -83,15 +83,6 @@ export async function setPref(key, value)
     return wrap(tx('preferences', 'readwrite').put(value, key));
 }
 
-export async function getAllPrefs()
-{
-    await openDB();
-    const store = tx('preferences');
-    const keys = await wrap(store.getAllKeys());
-    const values = await wrap(tx('preferences').getAll());
-    return Object.fromEntries(keys.map((k, i) => [k, values[i]]));
-}
-
 // ── Progress ─────────────────────────────────────────────────────────────────
 
 export async function getProgress(lessonId)

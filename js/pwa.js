@@ -56,24 +56,15 @@ export async function getCachedLessonIds() {
     return new Set(keys);
 }
 
-export async function isCachedById(lessonId) {
-    const db  = await openAudioDB();
-    const rec = await wrap(db.transaction(STORE_NAME).objectStore(STORE_NAME).get(lessonId));
-    return !!rec;
-}
-
-export function isCached(lesson) {
-    // Synchronous check not possible with IDB — use isCachedById for async
-    return false;
-}
-
 export async function cacheLesson(lesson) {
     const url = resolveAudioUrl(lesson);
     bus.emit('cachingLesson', { lesson });
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const blob = await response.blob();
+        const blob = await readBodyWithProgress(response, (percent) => {
+            bus.emit('cachingProgress', { lessonId: lesson.id, percent });
+        });
         const db   = await openAudioDB();
         await wrap(
             db.transaction(STORE_NAME, 'readwrite')
@@ -85,6 +76,29 @@ export async function cacheLesson(lesson) {
         console.error('[pwa] cache failed:', err);
         bus.emit('lessonCacheFailed', { lessonId: lesson.id });
     }
+}
+
+/**
+ * Stream the response body into a Blob, reporting progress along the way.
+ * Falls back to response.blob() if the body isn't readable.
+ */
+async function readBodyWithProgress(response, onProgress) {
+    if (!response.body) return response.blob();
+
+    const total = parseInt(response.headers.get('Content-Length') || '0', 10) || 0;
+    const reader = response.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        onProgress(total ? Math.round((received / total) * 100) : null);
+    }
+
+    return new Blob(chunks);
 }
 
 export async function deleteCachedLesson(lesson) {

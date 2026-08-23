@@ -311,8 +311,7 @@ html, body {
 
 /* Bookmark & download */
 .bookmark-btn,
-.download-btn,
-.share-btn {
+.download-btn {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
@@ -329,8 +328,7 @@ html, body {
 }
 
 .bookmark-btn svg,
-.download-btn svg,
-.share-btn svg {
+.download-btn svg {
     width: 13px;
     height: 13px;
     stroke-width: 2px;
@@ -338,7 +336,6 @@ html, body {
     display: block;
 }
 
-.share-btn:hover    { color: var(--gold);      background: var(--gold-wash); }
 .bookmark-btn:hover { color: var(--gold);      background: var(--gold-wash); }
 .download-btn:hover { color: var(--green-mid); background: var(--green-wash); }
 .bookmark-btn.active { color: var(--gold); }
@@ -350,6 +347,13 @@ html, body {
 .download-btn.loading svg {
     animation: spin 0.8s linear infinite;
     opacity: 0.5;
+}
+
+/* Download progress fill (driven by --dl, set from JS) */
+.download-btn.loading {
+    background-image: linear-gradient(to left, var(--green-wash), var(--green-wash));
+    background-repeat: no-repeat;
+    background-size: var(--dl, 0%) 100%;
 }
 
 /* ── Toast notification ────────────────────────────────────── */
@@ -452,6 +456,7 @@ html, body {
 }
 
 .menu-btn {
+    display: none; /* sidebar toggle is only needed on mobile */
     width: 30px;
     height: 30px;
     background: var(--parchment-lo);
@@ -460,7 +465,6 @@ html, body {
     color: var(--ink-mid);
     font-size: 1.1rem;
     cursor: pointer;
-    display: flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
@@ -492,7 +496,30 @@ hr {
     border-bottom: 1px solid var(--parchment-bd);
     background: var(--parchment);
     flex-shrink: 0;
+    position: relative;
 }
+
+.share-current-btn {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    border-radius: var(--r-full);
+    color: var(--ink-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background var(--ease), color var(--ease);
+}
+
+.share-current-btn svg { width: 14px; height: 14px; }
+.share-current-btn:hover { color: var(--gold); background: var(--gold-wash); }
 
 /* ── Player ──────────────────────────────────────────────── */
 .player-section {
@@ -702,36 +729,6 @@ hr {
     min-height: 0;
 }
 
-.tab-nav {
-    display: flex;
-    background: var(--parchment);
-    border-bottom: 1px solid var(--parchment-bd);
-    flex-shrink: 0;
-}
-
-.tab-btn {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    background: none;
-    font-family: var(--font-ui);
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--ink-muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: color var(--ease), border-color var(--ease);
-    letter-spacing: 0.02em;
-}
-
-.tab-btn.active {
-    color: var(--green-deep);
-    border-bottom-color: var(--gold);
-}
-
-.tab-btn:hover:not(.active) { color: var(--ink-mid); }
-
 .scrollable-content {
     flex: 1;
     overflow-y: auto;
@@ -763,12 +760,6 @@ hr {
 }
 
 #descriptionList li:last-child { border-bottom: none; }
-
-#transcriptionContent {
-    font-size: 0.875rem;
-    color: var(--ink-mid);
-    line-height: 2;
-}
 
 /* ═══════════════════════════════════════════════════════════
    MODALS
@@ -944,6 +935,7 @@ hr {
 }
 
 /* ── Global Search ─────────────────────────────────────────── */
+/* ── Deep search modal ──────────────────────────────────────── */
 #globalSearchInput {
     width: 100%;
     padding: 10px 13px;
@@ -1048,6 +1040,8 @@ button:active { transform: translateY(1px); }
 
 /* ── Mobile ─────────────────────────────────────────────────── */
 @media (max-width: 900px) {
+    .menu-btn { display: flex; }
+
     .sidebar {
         position: fixed;
         right: 0;

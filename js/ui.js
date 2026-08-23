@@ -12,7 +12,7 @@ import {
     setProgress, getAllProgress, setPref, getPref,
     getBookmarks, toggleBookmark, getCompletions, markComplete
 } from './storage.js';
-import { isCached, cacheLesson, deleteCachedLesson } from './pwa.js';
+import { getCachedLessonIds, cacheLesson, deleteCachedLesson } from './pwa.js';
 
 // ── Cached DOM refs ───────────────────────────────────────────────────────────
 
@@ -29,7 +29,6 @@ const el = {
     currentTimeSpan:     document.getElementById('currentTime'),
     durationSpan:        document.getElementById('duration'),
     descriptionList:     document.getElementById('descriptionList'),
-    transcriptionContent:document.getElementById('transcriptionContent'),
     lessonsContainer:    document.getElementById('lessonsContainer'),
     currentNum:          document.getElementById('currentNum'),
     totalNum:            document.getElementById('totalNum'),
@@ -52,9 +51,10 @@ let _completions  = new Set();
 let _offlineLessons = new Set();
 let _progressMap  = {};
 let _currentIndex = 0;
+let _downloading  = new Set();
 
-// Throttle progress saves to once per second
-let _saveTimer = null;
+// Leading-edge throttle: persist progress at most once per second
+let _lastSaveAt = 0;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -62,10 +62,11 @@ export async function initUI(player) {
     _player = player;
 
     // Load persisted UI state
-    [_bookmarks, _completions, _progressMap] = await Promise.all([
+    [_bookmarks, _completions, _progressMap, _offlineLessons] = await Promise.all([
         getBookmarks(),
         getCompletions(),
         getAllProgress(),
+        getCachedLessonIds(),
     ]);
 
     const lessons = getLessons();
@@ -89,7 +90,8 @@ function _renderLessonsList() {
     lessons.forEach((lesson, index) => {
         const div = document.createElement('div');
         div.className = 'lesson-item';
-        div.dataset.index = index;
+        div.dataset.index    = index;
+        div.dataset.lessonId = lesson.id;
 
         const saved      = _progressMap[lesson.id] ?? 0;
         const isBookmark = _bookmarks.has(lesson.id);
@@ -105,16 +107,9 @@ function _renderLessonsList() {
                 ${isDone ? '<span class="done-badge" title="مكتمل">✓</span>' : ''}
             </div>
             <div class="lesson-info">
-                <h4>${lesson.title}</h4>
+                <h4>${_escapeHtml(lesson.title)}</h4>
                 <p class="progress-info">${progressLabel}</p>
             </div>
-            <button class="share-btn" title="مشاركة" aria-label="share">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                </svg>
-            </button>
             <button class="bookmark-btn ${isBookmark ? 'active' : ''}" title="إشارة مرجعية" aria-label="bookmark">
                 <svg viewBox="0 0 24 24" fill="${isBookmark ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
@@ -129,11 +124,6 @@ function _renderLessonsList() {
             </button>
         `;
 
-        div.querySelector('.share-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            _shareLesson(lesson);
-        });
-
         div.querySelector('.bookmark-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
             const isNowBookmarked = await toggleBookmark(lesson.id);
@@ -143,29 +133,33 @@ function _renderLessonsList() {
 
         div.querySelector('.download-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
-            const btn     = e.currentTarget;
-            if (btn.disabled) return;
+            const btn = e.currentTarget;
+            if (btn.disabled || _downloading.has(lesson.id)) return;
 
-            const lessons = getLessons();
-            const lesson  = lessons[index];
-            const nowCached = _offlineLessons.has(lesson.id);
-
-            if (nowCached) {
+            if (_offlineLessons.has(lesson.id)) {
                 deleteCachedLesson(lesson);
                 _offlineLessons.delete(lesson.id);
                 _toast('تم حذف الدرس من التخزين');
                 _updateLessonItem(index);
             } else {
+                _downloading.add(lesson.id);
                 btn.disabled = true;
                 btn.classList.add('loading');
+                btn.style.setProperty('--dl', '0%');
                 _toast('جارٍ التحميل...');
                 cacheLesson(lesson);
+
+                // Offline-friendly: also preload the next lesson (one extra, only on explicit download)
+                const nextLesson = lessons[index + 1];
+                if (nextLesson && navigator.onLine && !_offlineLessons.has(nextLesson.id) && !_downloading.has(nextLesson.id)) {
+                    _downloading.add(nextLesson.id);
+                    cacheLesson(nextLesson);
+                }
             }
         });
 
-        div.addEventListener('click', async () => {
-            const blobUrl = await getCachedBlobUrl(lesson).catch(() => null);
-            _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson.id] ?? 0, srcOverride: blobUrl });
+        div.addEventListener('click', () => {
+            _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson.id] ?? 0 });
             if (window.innerWidth < 900) toggleSidebar();
         });
 
@@ -201,8 +195,9 @@ function _updateLessonItem(index) {
     const downloadBtn = div.querySelector('.download-btn');
     if (downloadBtn) {
         downloadBtn.classList.toggle('active', isOffline);
-        downloadBtn.querySelector('path, polyline, line')?.parentElement
-            ?.querySelector('path')?.setAttribute('fill', isOffline ? 'currentColor' : 'none');
+        downloadBtn.querySelectorAll('path, polyline, line').forEach((el) => {
+            el.setAttribute('fill', isOffline ? 'currentColor' : 'none');
+        });
         downloadBtn.title = isOffline ? 'محفوظ للاستخدام دون إنترنت' : 'حفظ للاستخدام دون إنترنت';
     }
 }
@@ -245,13 +240,8 @@ function _bindBusEvents() {
         _setActiveLessonItem(index);
         if (el.currentNum) el.currentNum.textContent = index + 1;
 
-        // Description
-        el.descriptionList.innerHTML = Array.isArray(lesson.description)
-            ? lesson.description.map(item => `<li>${item}</li>`).join('')
-            : `<li>${lesson.description || ''}</li>`;
-
-        // Transcription
-        el.transcriptionContent.innerHTML = lesson.transcription || 'لا يوجد نص متاح حالياً.';
+        // Description (escaped; the data uses "<br>" as a line separator)
+        el.descriptionList.innerHTML = _renderDescription(lesson);
 
         // Persist last lesson
         setPref('lastLessonId', lesson.id);
@@ -277,15 +267,16 @@ function _bindBusEvents() {
             el.durationSpan.textContent = _formatTime(duration);
         }
 
-        // Throttled progress save
+        // Leading-edge throttled progress save (at most once per second)
         const lesson = getLessons()[_currentIndex];
         if (lesson) {
             _progressMap[lesson.id] = currentTime;
-            clearTimeout(_saveTimer);
-            _saveTimer = setTimeout(() => {
+            const now = Date.now();
+            if (!_lastSaveAt || now - _lastSaveAt >= 1000) {
+                _lastSaveAt = now;
                 setProgress(lesson.id, currentTime);
                 _updateLessonItem(_currentIndex);
-            }, 1000);
+            }
         }
 
         // Completion: mark at 90%
@@ -308,34 +299,40 @@ function _bindBusEvents() {
 
     // ── PWA cache events ──────────────────────────────────────
 
-    bus.on('cachedLessonsLoaded', ({ urls }) => {
-        const lessons = getLessons();
-        lessons.forEach((l, i) => {
-            if (urls.some(u => u.includes(String(l.id)))) {
-                _offlineLessons.add(l.id);
-                _updateLessonItem(i);
-            }
-        });
+    bus.on('cachingProgress', ({ lessonId, percent }) => {
+        if (percent == null) return; // indeterminate — keep the spinner on
+        const btn = el.lessonsContainer.querySelector(`[data-lesson-id="${lessonId}"] .download-btn`);
+        if (btn) btn.style.setProperty('--dl', `${percent}%`);
     });
 
     bus.on('lessonCached', ({ lessonId }) => {
+        _downloading.delete(lessonId);
         const lessons = getLessons();
         const index = lessons.findIndex(l => l.id === lessonId);
         if (index !== -1) {
             _offlineLessons.add(lessonId);
             const btn = el.lessonsContainer.querySelector(`[data-index="${index}"] .download-btn`);
-            if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+            if (btn) {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                btn.style.removeProperty('--dl');
+            }
             _toast('تم الحفظ للاستخدام دون إنترنت ✓');
             _updateLessonItem(index);
         }
     });
 
     bus.on('lessonCacheFailed', ({ lessonId }) => {
+        _downloading.delete(lessonId);
         const lessons = getLessons();
         const index = lessons.findIndex(l => l.id === lessonId);
         if (index !== -1) {
             const btn = el.lessonsContainer.querySelector(`[data-index="${index}"] .download-btn`);
-            if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+            if (btn) {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                btn.style.removeProperty('--dl');
+            }
         }
         _toast('فشل التحميل، حاول مرة أخرى');
     });
@@ -365,7 +362,6 @@ function _bindSeekBar() {
         _player.seekTo(pos);
     };
 
-    el.progressContainer.addEventListener('click',      seek);
     el.progressContainer.addEventListener('mousedown',  (e) => { isDragging = true; seek(e); });
     el.progressContainer.addEventListener('touchstart', (e) => { isDragging = true; seek(e); }, { passive: true });
 
@@ -378,18 +374,21 @@ function _bindSeekBar() {
 // ── Search ────────────────────────────────────────────────────────────────────
 
 function _bindSearchControls() {
-    // Sidebar quick search
+    // Sidebar quick search (titles + descriptions)
     el.lessonSearch.addEventListener('input', (e) => {
-        const term  = e.target.value.toLowerCase();
-        const items = el.lessonsContainer.querySelectorAll('.lesson-item');
+        const term = e.target.value.trim().toLowerCase();
+        const matches = term.length < 2
+            ? null
+            : new Set(searchLessons(term, { titles: true, desc: true, dates: false }).map(l => l.id));
+
         const lessons = getLessons();
-        items.forEach((item, i) => {
-            const matches = lessons[i]?.title.toLowerCase().includes(term);
-            item.style.display = matches ? '' : 'none';
+        el.lessonsContainer.querySelectorAll('.lesson-item').forEach((item, i) => {
+            const show = matches === null || matches.has(lessons[i]?.id);
+            item.style.display = show ? '' : 'none';
         });
     });
 
-    // Global search modal
+    // Deep search modal (titles, descriptions, dates)
     el.globalSearchInput.addEventListener('input', (e) => {
         const term = e.target.value;
         if (term.length < 2) { el.globalSearchResults.innerHTML = ''; return; }
@@ -408,18 +407,16 @@ function _bindSearchControls() {
             const snippet = buildSnippet(l, term);
             return `
                 <div class="search-result-card" data-index="${index}">
-                    <strong>${l.title}</strong>
-                    ${snippet ? `<p>${snippet}</p>` : ''}
+                    <strong>${_escapeHtml(l.title)}</strong>
+                    ${snippet ? `<p>${_escapeHtml(snippet)}</p>` : ''}
                 </div>
             `;
         }).join('');
 
         el.globalSearchResults.querySelectorAll('.search-result-card').forEach(card => {
-            card.addEventListener('click', async () => {
-                const index   = parseInt(card.dataset.index, 10);
-                const lesson  = lessons[index];
-                const blobUrl = await getCachedBlobUrl(lesson).catch(() => null);
-                _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson?.id] ?? 0, srcOverride: blobUrl });
+            card.addEventListener('click', () => {
+                const index = parseInt(card.dataset.index, 10);
+                _player.loadLesson(index, { play: true, resumeTime: _progressMap[lessons[index]?.id] ?? 0 });
                 toggleGlobalSearch();
             });
         });
@@ -520,13 +517,6 @@ export function toggleGlobalSearch() {
     }
 }
 
-export function switchTab(evt, tabId) {
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    evt.currentTarget.classList.add('active');
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function _formatTime(seconds) {
@@ -536,7 +526,31 @@ function _formatTime(seconds) {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function _escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function _renderDescription(lesson) {
+    const items = Array.isArray(lesson.description)
+        ? lesson.description
+        : [lesson.description || ''];
+    return items
+        .map(item => `<li>${_escapeHtml(item).replace(/\s*&lt;br&gt;\s*/g, '<br>')}</li>`)
+        .join('');
+}
+
 // ── Share ─────────────────────────────────────────────────────────────────────
+
+export function shareCurrentLesson() {
+    const lesson = getLessons()[_currentIndex];
+    if (lesson) _shareLesson(lesson);
+}
 
 async function _shareLesson(lesson) {
     const url = `${location.origin}${location.pathname}?lesson=${lesson.id}`;

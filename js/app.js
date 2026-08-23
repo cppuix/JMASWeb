@@ -11,15 +11,15 @@ import {
 } from './storage.js';
 import {
     initUI,
-    toggleSidebar, toggleAbout, toggleGlobalSearch, switchTab, toggleBookmarkFilter,
+    toggleSidebar, toggleAbout, toggleBookmarkFilter, shareCurrentLesson, toggleGlobalSearch,
 } from './ui.js';
 import { registerSW, setupMediaSession } from './pwa.js';
 
-window.toggleSidebar         = toggleSidebar;
-window.toggleAbout           = toggleAbout;
-window.toggleGlobalSearch    = toggleGlobalSearch;
-window.switchTab             = switchTab;
-window.toggleBookmarkFilter  = toggleBookmarkFilter;
+window.toggleSidebar        = toggleSidebar;
+window.toggleAbout          = toggleAbout;
+window.toggleGlobalSearch   = toggleGlobalSearch;
+window.toggleBookmarkFilter = toggleBookmarkFilter;
+window.shareCurrentLesson   = shareCurrentLesson;
 
 const MOON_ICON = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
 const SUN_ICON  = `<circle cx="12" cy="12" r="5"/>

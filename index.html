@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="JMAS">
     <title>جامع مسائل العقيدة الصحيحة</title>
     <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Tajawal:wght@400;500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -86,7 +87,7 @@
                 </button>
             </div>
             <div class="search-container">
-                <input type="text" id="lessonSearch" placeholder="ابحث عن درس..." dir="rtl">
+                <input type="text" id="lessonSearch" placeholder="ابحث في العناوين والوصف..." dir="rtl">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -123,7 +124,7 @@
                         </div>
                         <div class="modal-body">
                             <input type="text" id="globalSearchInput"
-                                placeholder="ابحث في الدروس، الوصف، أو التواريخ..."
+                                placeholder="ابحث في العناوين، الوصف، أو التواريخ..."
                                 style="width:100%; padding:12px; border-radius:8px; border:1px solid #ddd; font-family:inherit; outline:none;">
                             <div class="search-filters">
                                 <label><input type="checkbox" id="searchTitles" checked> العناوين</label>
@@ -140,6 +141,13 @@
 
             <section class="meta-row">
                 <div id="lessonCounter">الدرس <span id="currentNum">1</span> من <span id="totalNum">--</span></div>
+                <button onclick="shareCurrentLesson()" class="share-current-btn" aria-label="مشاركة الدرس الحالي" title="مشاركة الدرس الحالي">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                </button>
             </section>
 
             <section class="player-section">
@@ -155,15 +163,19 @@
                     </div>
 
                     <div class="controls-row">
-                        <button id="prevBtn" class="nav-btn">⏭</button>
-                        <button style="font-size: 1rem;" id="skipBackBtn" class="skip-btn">↻</button>
-                        <button id="playPauseBtn" class="play-btn">
+                        <button id="prevBtn" class="nav-btn" aria-label="الدرس السابق" title="الدرس السابق">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </button>
+                        <button id="skipBackBtn" class="skip-btn" aria-label="رجوع 5 ثوانٍ" title="رجوع 5 ثوانٍ">-5</button>
+                        <button id="playPauseBtn" class="play-btn" aria-label="تشغيل / إيقاف">
                             <svg viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z" fill="currentColor" />
                             </svg>
                         </button>
-                        <button style="font-size: 1rem;" id="skipForwardBtn" class="skip-btn">↺</button>
-                        <button id="nextBtn" class="nav-btn">⏮</button>
+                        <button id="skipForwardBtn" class="skip-btn" aria-label="تقديم 5 ثوانٍ" title="تقديم 5 ثوانٍ">+5</button>
+                        <button id="nextBtn" class="nav-btn" aria-label="الدرس التالي" title="الدرس التالي">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        </button>
                     </div>
 
                     <div class="settings-row">
@@ -179,22 +191,11 @@
             </section>
 
             <section class="content-section">
-                <nav class="tab-nav">
-                    <button class="tab-btn active" style="font-family: 'Tajawal', sans-serif;"
-                        onclick="switchTab(event, 'tab-description')">الوصف</button>
-                    <button class="tab-btn" style="font-family: 'Tajawal', sans-serif;"
-                        onclick="switchTab(event, 'tab-transcript')">النص المكتوب</button>
-                </nav>
-
                 <div class="scrollable-content">
                     <audio id="audioPlayer" preload="metadata"></audio>
 
                     <div id="tab-description" class="tab-pane active">
                         <ul id="descriptionList"></ul>
-                    </div>
-
-                    <div id="tab-transcript" class="tab-pane">
-                        <div id="transcriptionContent"></div>
                     </div>
                 </div>
             </section>
