@@ -187,6 +187,9 @@ html, body {
     color: #fff;
 }
 
+/* The sidebar close ✕ is only meaningful when the sidebar is a slide-over (mobile) */
+.sidebar-header .close-modal.sidebar-close { display: none; }
+
 .sidebar-header .close-modal.active {
     background: var(--gold-dim);
     color: #fff;
@@ -356,6 +359,43 @@ html, body {
     background-size: var(--dl, 0%) 100%;
 }
 
+/* Fresh-lessons line */
+.fresh-line {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 8px 12px;
+    padding: 7px 12px;
+    border: 1px solid var(--green-ring);
+    background: var(--green-wash);
+    color: var(--green-deep);
+    border-radius: var(--r-md);
+    font-family: var(--font-ui);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: right;
+    flex-shrink: 0;
+    transition: background var(--ease), color var(--ease);
+}
+
+.fresh-line[hidden] { display: none; }
+.fresh-line:hover { background: var(--green-ring); }
+.fresh-line.active { background: var(--green-deep); color: #fff; border-color: var(--green-deep); }
+
+.new-badge {
+    display: inline-block;
+    font-size: 0.56rem;
+    font-weight: 700;
+    color: var(--green-deep);
+    background: var(--green-wash);
+    border: 1px solid var(--green-ring);
+    border-radius: var(--r-full);
+    padding: 1px 7px;
+    margin-inline-start: 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
 /* ── Toast notification ────────────────────────────────────── */
 #jmas-toast {
     position: fixed;
@@ -520,6 +560,50 @@ hr {
 
 .share-current-btn svg { width: 14px; height: 14px; }
 .share-current-btn:hover { color: var(--gold); background: var(--gold-wash); }
+
+/* Continue line — where did I leave off */
+.continue-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--parchment);
+    border-bottom: 1px solid var(--parchment-bd);
+    flex-shrink: 0;
+}
+
+.continue-line[hidden] { display: none; }
+
+.continue-play {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--r-full);
+    border: none;
+    background: var(--green-deep);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    flex-shrink: 0;
+    box-shadow: var(--sh-xs);
+    transition: background var(--ease), transform var(--ease);
+}
+
+.continue-play:hover { background: var(--green-mid); transform: scale(1.05); }
+.continue-play svg { width: 15px; height: 15px; }
+
+.continue-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.continue-title { font-size: 0.82rem; color: var(--ink-mid); }
+.continue-title strong { color: var(--green-deep); font-weight: 700; }
+.continue-sub { font-size: 0.7rem; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Player ──────────────────────────────────────────────── */
 .player-section {
@@ -760,6 +844,123 @@ hr {
 }
 
 #descriptionList li:last-child { border-bottom: none; }
+
+/* Per-lesson notes */
+.notes-block { margin-top: 18px; }
+
+.notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.notes-header h4 {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    color: var(--green-deep);
+    margin: 0;
+}
+
+.note-add-btn {
+    background: none;
+    border: 1px solid var(--green-ring);
+    border-radius: var(--r-full);
+    color: var(--green-deep);
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background var(--ease), color var(--ease);
+}
+
+.note-add-btn:hover { background: var(--green-wash); }
+
+.notes-empty {
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    padding: 8px 0;
+}
+
+.note-item {
+    border: 1px solid var(--parchment-bd);
+    background: var(--parchment-hi);
+    border-radius: var(--r-md);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.note-text {
+    font-size: 0.84rem;
+    line-height: 1.8;
+    color: var(--ink-mid);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.note-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.note-edit-btn,
+.note-del-btn {
+    background: none;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 0;
+    color: var(--ink-muted);
+}
+
+.note-edit-btn:hover { color: var(--green-deep); }
+.note-del-btn:hover { color: #b03a2e; }
+
+.note-editor textarea {
+    width: 100%;
+    min-height: 70px;
+    padding: 9px 11px;
+    background: var(--parchment-lo);
+    border: 1px solid var(--parchment-bd);
+    border-radius: var(--r-md);
+    font-family: var(--font-ui);
+    font-size: 0.84rem;
+    line-height: 1.7;
+    color: var(--ink);
+    resize: vertical;
+    outline: none;
+}
+
+.note-editor textarea:focus {
+    border-color: var(--green-ring);
+    box-shadow: 0 0 0 3px rgba(45,90,39,0.1);
+}
+
+.note-editor-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.note-save-btn,
+.note-cancel-btn {
+    border-radius: var(--r-full);
+    font-family: var(--font-ui);
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 5px 14px;
+    cursor: pointer;
+    border: 1px solid var(--parchment-bd);
+    background: var(--parchment-lo);
+    color: var(--ink-mid);
+}
+
+.note-save-btn { background: var(--green-deep); border-color: var(--green-deep); color: #fff; }
+.note-save-btn:hover { background: var(--green-mid); }
+.note-cancel-btn:hover { background: var(--parchment-hi); }
 
 /* ═══════════════════════════════════════════════════════════
    MODALS
@@ -1041,6 +1242,7 @@ button:active { transform: translateY(1px); }
 /* ── Mobile ─────────────────────────────────────────────────── */
 @media (max-width: 900px) {
     .menu-btn { display: flex; }
+    .sidebar-header .close-modal.sidebar-close { display: flex; }
 
     .sidebar {
         position: fixed;

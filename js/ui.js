@@ -10,7 +10,8 @@ import { Player } from './player.js';
 import { getLessons, searchLessons, buildSnippet, getIndexById } from './lessons.js';
 import {
     setProgress, getAllProgress, setPref, getPref,
-    getBookmarks, toggleBookmark, getCompletions, markComplete
+    getBookmarks, toggleBookmark, getCompletions, markComplete,
+    getNotes, setNotes,
 } from './storage.js';
 import { getCachedLessonIds, cacheLesson, deleteCachedLesson } from './pwa.js';
 
@@ -33,6 +34,11 @@ const el = {
     currentNum:          document.getElementById('currentNum'),
     totalNum:            document.getElementById('totalNum'),
     lessonSearch:        document.getElementById('lessonSearch'),
+    freshLine:           document.getElementById('freshLine'),
+    continueLine:        document.getElementById('continueLine'),
+    notesBlock:          document.getElementById('notesBlock'),
+    notesList:           document.getElementById('notesList'),
+    addNoteBtn:          document.getElementById('addNoteBtn'),
     globalSearchInput:   document.getElementById('globalSearchInput'),
     globalSearchResults: document.getElementById('globalSearchResults'),
     searchTitles:        document.getElementById('searchTitles'),
@@ -52,6 +58,10 @@ let _offlineLessons = new Set();
 let _progressMap  = {};
 let _currentIndex = 0;
 let _downloading  = new Set();
+let _newIds       = new Set();
+let _showingNewOnly = false;
+let _showingBookmarksOnly = false;
+let _searchMatches = null;
 
 // Leading-edge throttle: persist progress at most once per second
 let _lastSaveAt = 0;
@@ -72,7 +82,12 @@ export async function initUI(player) {
     const lessons = getLessons();
     if (el.totalNum) el.totalNum.textContent = lessons.length;
 
+    await _initFreshLine();
+    _renderContinueLine();
+    _bindNotes();
+
     _renderLessonsList();
+    _bindListEvents();
     _bindPlayerControls();
     _bindBusEvents();
     _bindModalControls();
@@ -101,21 +116,22 @@ function _renderLessonsList() {
             : 'لم يبدأ بعد';
 
         const isOffline  = _offlineLessons.has(lesson.id);
+        const isNew      = _newIds.has(lesson.id);
 
         div.innerHTML = `
             <div class="lesson-status">
                 ${isDone ? '<span class="done-badge" title="مكتمل">✓</span>' : ''}
             </div>
             <div class="lesson-info">
-                <h4>${_escapeHtml(lesson.title)}</h4>
+                <h4>${_escapeHtml(lesson.title)}${isNew ? ' <span class="new-badge">جديد</span>' : ''}</h4>
                 <p class="progress-info">${progressLabel}</p>
             </div>
-            <button class="bookmark-btn ${isBookmark ? 'active' : ''}" title="إشارة مرجعية" aria-label="bookmark">
+            <button class="bookmark-btn ${isBookmark ? 'active' : ''}" data-action="bookmark" title="إشارة مرجعية" aria-label="bookmark">
                 <svg viewBox="0 0 24 24" fill="${isBookmark ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                 </svg>
             </button>
-            <button class="download-btn ${isOffline ? 'active' : ''}" title="${isOffline ? 'محفوظ للاستخدام دون إنترنت' : 'حفظ للاستخدام دون إنترنت'}" aria-label="offline">
+            <button class="download-btn ${isOffline ? 'active' : ''}" data-action="download" title="${isOffline ? 'محفوظ للاستخدام دون إنترنت' : 'حفظ للاستخدام دون إنترنت'}" aria-label="offline">
                 <svg viewBox="0 0 24 24" fill="${isOffline ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                     <polyline points="7 10 12 15 17 10"/>
@@ -124,47 +140,65 @@ function _renderLessonsList() {
             </button>
         `;
 
-        div.querySelector('.bookmark-btn').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const isNowBookmarked = await toggleBookmark(lesson.id);
-            isNowBookmarked ? _bookmarks.add(lesson.id) : _bookmarks.delete(lesson.id);
-            _updateLessonItem(index);
-        });
-
-        div.querySelector('.download-btn').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const btn = e.currentTarget;
-            if (btn.disabled || _downloading.has(lesson.id)) return;
-
-            if (_offlineLessons.has(lesson.id)) {
-                deleteCachedLesson(lesson);
-                _offlineLessons.delete(lesson.id);
-                _toast('تم حذف الدرس من التخزين');
-                _updateLessonItem(index);
-            } else {
-                _downloading.add(lesson.id);
-                btn.disabled = true;
-                btn.classList.add('loading');
-                btn.style.setProperty('--dl', '0%');
-                _toast('جارٍ التحميل...');
-                cacheLesson(lesson);
-
-                // Offline-friendly: also preload the next lesson (one extra, only on explicit download)
-                const nextLesson = lessons[index + 1];
-                if (nextLesson && navigator.onLine && !_offlineLessons.has(nextLesson.id) && !_downloading.has(nextLesson.id)) {
-                    _downloading.add(nextLesson.id);
-                    cacheLesson(nextLesson);
-                }
-            }
-        });
-
-        div.addEventListener('click', () => {
-            _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson.id] ?? 0 });
-            if (window.innerWidth < 900) toggleSidebar();
-        });
-
         el.lessonsContainer.appendChild(div);
     });
+
+    _applyListFilter();
+}
+
+// ── Lesson list events (delegated — one handler for all rows) ───────────────
+
+function _bindListEvents() {
+    el.lessonsContainer.addEventListener('click', async (e) => {
+        const actionEl = e.target.closest('[data-action]');
+        const rowEl    = e.target.closest('.lesson-item');
+        if (!rowEl) return;
+
+        const index  = parseInt(rowEl.dataset.index, 10);
+        const lesson = getLessons()[index];
+        if (!lesson) return;
+
+        if (actionEl) {
+            if (actionEl.dataset.action === 'bookmark') {
+                const isNowBookmarked = await toggleBookmark(lesson.id);
+                isNowBookmarked ? _bookmarks.add(lesson.id) : _bookmarks.delete(lesson.id);
+                _updateLessonItem(index);
+            } else if (actionEl.dataset.action === 'download') {
+                await _handleDownload(lesson, index, actionEl);
+            }
+            return;
+        }
+
+        // Play the lesson
+        _player.loadLesson(index, { play: true, resumeTime: _progressMap[lesson.id] ?? 0 });
+        if (window.innerWidth < 900) toggleSidebar();
+    });
+}
+
+async function _handleDownload(lesson, index, btn) {
+    if (btn.disabled || _downloading.has(lesson.id)) return;
+
+    if (_offlineLessons.has(lesson.id)) {
+        deleteCachedLesson(lesson);
+        _offlineLessons.delete(lesson.id);
+        _toast('تم حذف الدرس من التخزين');
+        _updateLessonItem(index);
+    } else {
+        _downloading.add(lesson.id);
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.style.setProperty('--dl', '0%');
+        _toast('جارٍ التحميل...');
+        cacheLesson(lesson);
+
+        // Offline-friendly: also preload the next lesson (one extra, only on explicit download)
+        const lessons = getLessons();
+        const nextLesson = lessons[index + 1];
+        if (nextLesson && navigator.onLine && !_offlineLessons.has(nextLesson.id) && !_downloading.has(nextLesson.id)) {
+            _downloading.add(nextLesson.id);
+            cacheLesson(nextLesson);
+        }
+    }
 }
 
 function _updateLessonItem(index) {
@@ -202,6 +236,178 @@ function _updateLessonItem(index) {
     }
 }
 
+// ── Continue line (where did I leave off) ────────────────────────────────────
+
+function _renderContinueLine() {
+    const lessons = getLessons();
+    let idx = -1;
+
+    // Prefer the furthest lesson you've actually started...
+    for (let i = lessons.length - 1; i >= 0; i--) {
+        if ((_progressMap[lessons[i].id] ?? 0) > 0) { idx = i; break; }
+    }
+
+    // ...otherwise point forward to the first not-yet-finished lesson.
+    if (idx === -1) {
+        idx = lessons.findIndex(l => !_completions.has(l.id));
+    }
+
+    if (idx === -1) {
+        el.continueLine.hidden = true;
+        return;
+    }
+
+    const lesson     = lessons[idx];
+    const resumeTime = _progressMap[lesson.id];
+    const next       = lessons[idx + 1];
+
+    el.continueLine.hidden = false;
+    el.continueLine.innerHTML = `
+        <button class="continue-play" aria-label="استئناف الدرس">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <div class="continue-text">
+            <span class="continue-title">واصل من <strong>${_escapeHtml(lesson.title)}</strong></span>
+            <span class="continue-sub">${next ? `التالي: ${_escapeHtml(next.title)}` : 'آخر درس'} · ${_formatTime(resumeTime)}</span>
+        </div>
+    `;
+    el.continueLine.querySelector('.continue-play').addEventListener('click', () => {
+        _player.loadLesson(idx, { play: true, resumeTime });
+    });
+}
+
+// ── Fresh lessons (new since last visit) ─────────────────────────────────────
+
+async function _initFreshLine() {
+    const lessons = getLessons();
+    const maxId = lessons.length ? Math.max(...lessons.map(l => l.id)) : 0;
+    const seen  = await getPref('lastSeenMaxId', null);
+
+    // New = lessons added since your last visit; first visit shows nothing new.
+    _newIds = new Set(seen == null ? [] : lessons.filter(l => l.id > seen).map(l => l.id));
+
+    // Remember this visit's frontier for next time.
+    if (seen !== maxId) await setPref('lastSeenMaxId', maxId);
+
+    el.freshLine.addEventListener('click', () => {
+        _showingNewOnly = !_showingNewOnly;
+        el.freshLine.classList.toggle('active', _showingNewOnly);
+        _applyListFilter();
+    });
+
+    _renderFreshLine();
+}
+
+function _renderFreshLine() {
+    if (_newIds.size === 0) {
+        el.freshLine.hidden = true;
+        return;
+    }
+    el.freshLine.hidden = false;
+    el.freshLine.textContent = `جديد: ${_newIds.size} ${_newIds.size === 1 ? 'درس' : 'دروس'} منذ آخر زيارة`;
+}
+
+// ── List filtering (bookmarks / new) ─────────────────────────────────────────
+
+function _applyListFilter() {
+    const lessons = getLessons();
+    el.lessonsContainer.querySelectorAll('.lesson-item').forEach((item, i) => {
+        const id = lessons[i]?.id;
+        let show = true;
+        if (_searchMatches && !_searchMatches.has(id)) show = false;
+        if (_showingBookmarksOnly && !_bookmarks.has(id)) show = false;
+        if (_showingNewOnly && !_newIds.has(id)) show = false;
+        item.style.display = show ? '' : 'none';
+    });
+}
+
+// ── Notes (per lesson — separate, editable entries) ──────────────────────────
+
+let _notes          = [];   // notes for the currently-open lesson
+let _editingNoteId  = null; // 'new' or a note id being edited
+
+function _newNoteId() {
+    return 'n' + Date.now() + Math.random().toString(36).slice(2, 6);
+}
+
+function _bindNotes() {
+    el.addNoteBtn.addEventListener('click', () => {
+        _editingNoteId = 'new';
+        _renderNotes();
+    });
+
+    el.notesBlock.addEventListener('click', async (e) => {
+        const action = e.target.closest('[data-action]')?.dataset.action;
+        if (!action) return;
+
+        const lessonId = getLessons()[_currentIndex]?.id;
+        if (lessonId == null) return;
+
+        if (action === 'save') {
+            const text = e.target.closest('.note-editor')?.querySelector('textarea')?.value.trim();
+            if (!text) { _editingNoteId = null; _renderNotes(); return; }
+            if (_editingNoteId === 'new') {
+                _notes.unshift({ id: _newNoteId(), text, updatedAt: Date.now() });
+            } else {
+                const note = _notes.find(n => n.id === _editingNoteId);
+                if (note) { note.text = text; note.updatedAt = Date.now(); }
+            }
+            _editingNoteId = null;
+            await setNotes(lessonId, _notes);
+            _renderNotes();
+        } else if (action === 'cancel') {
+            _editingNoteId = null;
+            _renderNotes();
+        } else if (action === 'edit') {
+            _editingNoteId = e.target.closest('.note-item')?.dataset.noteId ?? null;
+            _renderNotes();
+        } else if (action === 'del') {
+            const noteId = e.target.closest('.note-item')?.dataset.noteId;
+            _notes = _notes.filter(n => n.id !== noteId);
+            await setNotes(lessonId, _notes);
+            _renderNotes();
+        }
+    });
+}
+
+function _renderNotes() {
+    const list = el.notesList;
+    list.innerHTML = '';
+
+    if (_notes.length === 0 && _editingNoteId === null) {
+        list.innerHTML = '<p class="notes-empty">لا ملاحظات بعد.</p>';
+    }
+
+    _notes.forEach(note => {
+        const div = document.createElement('div');
+        div.className = 'note-item';
+        div.dataset.noteId = note.id;
+        div.innerHTML = `
+            <p class="note-text">${_escapeHtml(note.text)}</p>
+            <div class="note-actions">
+                <button class="note-edit-btn" data-action="edit" type="button">تعديل</button>
+                <button class="note-del-btn" data-action="del" type="button">حذف</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
+
+    if (_editingNoteId !== null) {
+        const editingNote = _notes.find(n => n.id === _editingNoteId);
+        const editor = document.createElement('div');
+        editor.className = 'note-editor';
+        editor.innerHTML = `
+            <textarea rows="3" placeholder="اكتب ملاحظتك...">${editingNote ? _escapeHtml(editingNote.text) : ''}</textarea>
+            <div class="note-editor-actions">
+                <button class="note-save-btn" data-action="save" type="button">حفظ</button>
+                <button class="note-cancel-btn" data-action="cancel" type="button">إلغاء</button>
+            </div>
+        `;
+        list.appendChild(editor);
+        editor.querySelector('textarea').focus();
+    }
+}
+
 function _setActiveLessonItem(index) {
     el.lessonsContainer.querySelectorAll('.lesson-item').forEach((item, i) => {
         item.classList.toggle('active', i === index);
@@ -235,7 +441,7 @@ function _bindPlayerControls() {
 // ── Bus event handlers ────────────────────────────────────────────────────────
 
 function _bindBusEvents() {
-    bus.on('lessonLoaded', ({ lesson, index }) => {
+    bus.on('lessonLoaded', async ({ lesson, index }) => {
         _currentIndex = index;
         _setActiveLessonItem(index);
         if (el.currentNum) el.currentNum.textContent = index + 1;
@@ -243,8 +449,17 @@ function _bindBusEvents() {
         // Description (escaped; the data uses "<br>" as a line separator)
         el.descriptionList.innerHTML = _renderDescription(lesson);
 
-        // Persist last lesson
+        // Load this lesson's notes (guard against a stale response after a quick switch)
+        const notes = await getNotes(lesson.id);
+        if (getLessons()[_currentIndex]?.id === lesson.id) {
+            _notes = notes;
+            _editingNoteId = null;
+            _renderNotes();
+        }
+
+        // Persist last lesson, and refresh the continue line for the session
         setPref('lastLessonId', lesson.id);
+        _renderContinueLine();
     });
 
     bus.on('play', () => {
@@ -295,6 +510,10 @@ function _bindBusEvents() {
             _progressMap[lesson.id] = 0;
             _updateLessonItem(_currentIndex);
         }
+    });
+
+    bus.on('offlineUncached', () => {
+        _toast('هذا الدرس غير محفوظ للاستخدام دون إنترنت');
     });
 
     // ── PWA cache events ──────────────────────────────────────
@@ -374,18 +593,13 @@ function _bindSeekBar() {
 // ── Search ────────────────────────────────────────────────────────────────────
 
 function _bindSearchControls() {
-    // Sidebar quick search (titles + descriptions)
+    // Sidebar quick search (titles + descriptions) — composes with the filters
     el.lessonSearch.addEventListener('input', (e) => {
         const term = e.target.value.trim().toLowerCase();
-        const matches = term.length < 2
+        _searchMatches = term.length < 2
             ? null
             : new Set(searchLessons(term, { titles: true, desc: true, dates: false }).map(l => l.id));
-
-        const lessons = getLessons();
-        el.lessonsContainer.querySelectorAll('.lesson-item').forEach((item, i) => {
-            const show = matches === null || matches.has(lessons[i]?.id);
-            item.style.display = show ? '' : 'none';
-        });
+        _applyListFilter();
     });
 
     // Deep search modal (titles, descriptions, dates)
@@ -475,20 +689,11 @@ export function toggleSidebar() {
     el.sidebar.classList.toggle('open');
 }
 
-let _showingBookmarksOnly = false;
-
 export function toggleBookmarkFilter() {
     _showingBookmarksOnly = !_showingBookmarksOnly;
     const btn = document.getElementById('bookmarkFilterBtn');
     btn?.classList.toggle('active', _showingBookmarksOnly);
-
-    const lessons = getLessons();
-    const items   = el.lessonsContainer.querySelectorAll('.lesson-item');
-    items.forEach((item, i) => {
-        const lesson  = lessons[i];
-        const visible = !_showingBookmarksOnly || _bookmarks.has(lesson?.id);
-        item.style.display = visible ? '' : 'none';
-    });
+    _applyListFilter();
 }
 
 export function toggleAbout() {
@@ -521,9 +726,12 @@ export function toggleGlobalSearch() {
 
 function _formatTime(seconds) {
     if (!seconds || isNaN(seconds)) return '0:00';
-    const m = Math.floor(seconds / 60);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
+    const ss = s.toString().padStart(2, '0');
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${ss}`;
+    return `${m}:${ss}`;
 }
 
 function _escapeHtml(str) {

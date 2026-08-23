@@ -78,7 +78,7 @@
                         <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                 </button>
-                <button onclick="toggleSidebar()" class="close-modal" aria-label="Close Sidebar">
+                <button onclick="toggleSidebar()" class="close-modal sidebar-close" aria-label="Close Sidebar">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                         stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -93,6 +93,7 @@
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
             </div>
+            <button id="freshLine" class="fresh-line" hidden></button>
             <div id="lessonsContainer" class="lessons-scroll"></div>
         </aside>
 
@@ -150,6 +151,8 @@
                 </button>
             </section>
 
+            <div id="continueLine" class="continue-line" hidden></div>
+
             <section class="player-section">
                 <div class="player-container">
                     <div class="progress-area">
@@ -196,6 +199,13 @@
 
                     <div id="tab-description" class="tab-pane active">
                         <ul id="descriptionList"></ul>
+                        <div class="notes-block" id="notesBlock">
+                            <div class="notes-header">
+                                <h4>ملاحظاتي</h4>
+                                <button id="addNoteBtn" class="note-add-btn" type="button">+ إضافة ملاحظة</button>
+                            </div>
+                            <div id="notesList" class="notes-list"></div>
+                        </div>
                     </div>
                 </div>
             </section>

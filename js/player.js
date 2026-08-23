@@ -36,16 +36,24 @@ export class Player {
         this.index = index;
         const lesson = this.lessons[index];
 
-        // Try cached blob first, fall back to remote URL
-        let src = resolveAudioUrl(lesson);
+        // Try the cached blob first
+        let blobUrl = null;
         try {
-            const blobUrl = await getCachedBlobUrl(lesson);
-            if (blobUrl) {
-                if (this._blobUrl) URL.revokeObjectURL(this._blobUrl);
-                this._blobUrl = blobUrl;
-                src = blobUrl;
-            }
-        } catch { /* use remote */ }
+            blobUrl = await getCachedBlobUrl(lesson);
+        } catch { /* treat as not cached */ }
+
+        // Offline with no cached copy — nothing to play, tell the UI.
+        if (!blobUrl && !navigator.onLine) {
+            this.bus.emit('offlineUncached', { lesson, index });
+            return;
+        }
+
+        let src = resolveAudioUrl(lesson);
+        if (blobUrl) {
+            if (this._blobUrl) URL.revokeObjectURL(this._blobUrl);
+            this._blobUrl = blobUrl;
+            src = blobUrl;
+        }
 
         this.audio.src = src;
         this.audio.load();

@@ -18,8 +18,8 @@ let _audioDB = null;
 async function openAudioDB() {
     if (_audioDB) return _audioDB;
     return new Promise((resolve, reject) => {
-        // Open with version 2 to add the audio_blobs store
-        const req = indexedDB.open(DB_NAME, 2);
+        // Open with version 3 to add the notes store
+        const req = indexedDB.open(DB_NAME, 3);
         req.onupgradeneeded = (e) => {
             const db = e.target.result;
             if (!db.objectStoreNames.contains('preferences')) {
@@ -33,6 +33,9 @@ async function openAudioDB() {
             }
             if (!db.objectStoreNames.contains('completions')) {
                 db.createObjectStore('completions', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains('notes')) {
+                db.createObjectStore('notes', { keyPath: 'id' });
             }
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -138,6 +141,10 @@ export async function registerSW() {
 export function setupMediaSession() {
     if (!('mediaSession' in navigator)) return;
 
+    // Track the user's chosen playback rate so the lock screen stays in sync.
+    let _rate = 1;
+    bus.on('speedChanged', ({ speed }) => { _rate = speed; });
+
     bus.on('lessonLoaded', ({ lesson }) => {
         navigator.mediaSession.metadata = new MediaMetadata({
             title:  lesson.title,
@@ -171,7 +178,7 @@ export function setupMediaSession() {
             navigator.mediaSession.setPositionState({
                 duration,
                 position: Math.min(currentTime, duration),
-                playbackRate: 1,
+                playbackRate: _rate,
             });
         } catch { /* ignore */ }
     });

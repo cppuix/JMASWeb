@@ -56,20 +56,10 @@ self.addEventListener('fetch', (e) => {
         return;
     }
 
-    // Static assets: cache-first, then fetch + store on miss.
-    e.respondWith(cacheFirst(req));
+    // Static assets: serve cached instantly, then refresh in the background so
+    // the app self-heals after every deploy (no manual cache-name bumping).
+    e.respondWith(staleWhileRevalidate(req));
 });
-
-async function cacheFirst(req) {
-    const cached = await caches.match(req);
-    if (cached) return cached;
-    const res = await fetch(req);
-    if (res && res.ok) {
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(req, res.clone());
-    }
-    return res;
-}
 
 async function networkFirst(req) {
     try {

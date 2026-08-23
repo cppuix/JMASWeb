@@ -1,18 +1,19 @@
 /**
  * storage.js
  * Thin async wrapper around IndexedDB.
- * Stores all app state: progress, preferences, bookmarks, completions.
+ * Stores all app state: progress, preferences, bookmarks, completions, notes.
  *
- * DB: jmas_db  v1
+ * DB: jmas_db  v3
  * Stores:
- *   preferences  — key/value pairs (lastLessonId, playbackSpeed, autoPlayNext, skipAmount)
+ *   preferences  — key/value pairs (lastLessonId, playbackSpeed, autoPlayNext, skipAmount, lastSeenMaxId)
  *   progress     — { id, currentTime, updatedAt }
  *   bookmarks    — { id, bookmarkedAt }
  *   completions  — { id, completedAt }
+ *   notes        — { id, items: [{ id, text, updatedAt }, ...] }
  */
 
 const DB_NAME = 'jmas_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let _db = null;
 
@@ -42,6 +43,10 @@ function openDB()
             if (!db.objectStoreNames.contains('completions'))
             {
                 db.createObjectStore('completions', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains('notes'))
+            {
+                db.createObjectStore('notes', { keyPath: 'id' });
             }
             if (!db.objectStoreNames.contains('audio_blobs'))
             {
@@ -142,6 +147,21 @@ export async function markComplete(lessonId)
 {
     await openDB();
     return wrap(tx('completions', 'readwrite').put({ id: lessonId, completedAt: Date.now() }));
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+export async function getNotes(lessonId)
+{
+    await openDB();
+    const rec = await wrap(tx('notes').get(lessonId));
+    return rec?.items || [];
+}
+
+export async function setNotes(lessonId, items)
+{
+    await openDB();
+    return wrap(tx('notes', 'readwrite').put({ id: lessonId, items, updatedAt: Date.now() }));
 }
 
 // ── Migration: pull old localStorage data into IndexedDB once ────────────────
